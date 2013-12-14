@@ -61,36 +61,71 @@ let logProgramAst = function
 	  Program(mainBlock) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
 		
 (* Logging for PLATO SAST *)
+let typeToString = function
+	  BooleanType -> "boolean"
+  | IntegerType -> "integer"
+	| NumberType(groupName) -> "number"
+
 let logListToSast logStringList = 
 	logToFile "Sast.log" (String.concat " " logStringList)
 	
 let logStringToSast logString = 
 	logListToSast [logString]
 		
+let logOperatorSast = function
+	  Not -> logStringToSast "not"
+	| And -> logStringToSast "and"
+	| Or -> logStringToSast "or"
+  | Plus -> logStringToSast "plus"
+	| Minus -> logStringToSast "minus"
+	| Times -> logStringToSast "times"
+	| Divide -> logStringToSast "divide"
+	| Mod -> logStringToSast "mod"
+	| Raise -> logStringToSast "raise"
+	| LessThan -> logStringToSast "less than"
+	| LessThanOrEqual -> logStringToSast "less than or equal"
+	| GreaterThan -> logStringToSast "greater than"
+	| GreaterThanOrEqual -> logStringToSast "greater than or equal"
+	| Equal -> logStringToSast "equal"
+
+let logPlatoTypeSast = function
+		BooleanType -> logStringToSast "Boolean Type"
+  | IntegerType -> logStringToSast "Integer Type"
+	| NumberType(groupName) -> logListToSast ["Number Type over group"; groupName]
+
 let rec logExpressionSast = function
-	  TypedBoolean(booleanValue) -> logListToAst ["Boolean"; string_of_bool booleanValue]
-	| TypedNumber(integerValue) -> logListToAst ["Number"; string_of_int integerValue]
-  | TypedIdentifier(variableName) -> logListToAst ["Variable";  variableName]
+	  TypedBoolean(booleanValue, _) -> logListToSast ["Boolean"; string_of_bool booleanValue]
+	| TypedNumber(integerValue, _) -> logListToSast ["Number"; string_of_int integerValue]
+  | TypedIdentifier(variableName, variableType) -> logListToSast ["Variable";  variableName; "of type"; typeToString variableType]
+	| TypedUnop(unaryOperator, operatorType, operatorExpression) -> 
+		logStringToSast "unary operator"; 
+		logOperatorSast unaryOperator;
+		logListToSast ["of type";  typeToString operatorType];
+		logStringToSast "acting on"; 
+		logExpressionSast operatorExpression;
+	| TypedBinop(binaryOperator, operatorType, operatorExpression1, operatorExpression2) -> 
+		logStringToSast "binary operator"; 
+		logListToSast ["of type";  typeToString operatorType];
+		logOperatorSast binaryOperator;
+		logStringToSast "acting on";
+		logExpressionSast operatorExpression1;
+		logStringToSast "and acting on";
+		logExpressionSast operatorExpression2
 
 let logStatementSast = function
-	  TypedPrint(printValue, printType) -> 
+	  TypedPrint(printExpression) -> 
 			logStringToSast "Print"; 
-			logExpressionSast(printValue); 
-			logPlatoTypeAst printType
-	| TypedAssignment((variableName, variableType), (newValue, newValueType)) -> 
+			logExpressionSast(printExpression)
+	| TypedAssignment((variableName, variableType), newValue) -> 
 		logListToSast ["Assign"; variableName; "of type"]; 
 		logPlatoTypeAst variableType;
 		logStringToSast " to value "; 
-		logExpressionSast(newValue);
-	  logStringToSast " of type ";  
-		logPlatoTypeAst newValueType
-	| TypedDeclaration((variableName, variableType), (newValue, newValueType)) ->
+		logExpressionSast(newValue)
+	| TypedDeclaration((variableName, variableType), newValue) ->
 	  logListToSast ["Declare"; variableName;  "as type"]; 
-		logPlatoTypeAst variableType;
+		logPlatoTypeSast variableType;
 		logStringToSast " and assign to value "; 
-		logExpressionSast(newValue);
-	  logStringToSast " of type ";  
-		logPlatoTypeAst newValueType
+		logExpressionSast(newValue)
 
 let logStatementBlockSast = function
 	  TypedStatementBlock(statementList) -> logListToSast ["StatementBlock of size"; string_of_int (List.length statementList)]; ignore (List.map logStatementSast statementList)
@@ -111,9 +146,18 @@ let logStringToJavaAst logString =
 let rec logJavaCallAst = function
     JavaCall(methodName, methodParameters) -> logListToJavaAst ["Java call to"; methodName; "with"; string_of_int (List.length methodParameters); "parameters"]; ignore (List.map logJavaExpressionAst methodParameters)
 and logJavaExpressionAst = function
-	  JavaBoolean(booleanValue) -> logListToJavaAst ["Java int"; string_of_bool booleanValue]
+	  JavaBoolean(booleanValue) -> logListToJavaAst ["Java boolean"; string_of_bool booleanValue]
   | JavaInt(intValue) -> logListToJavaAst ["Java int"; string_of_int intValue]
 	| JavaVariable(stringValue) -> logListToJavaAst ["Java variable"; stringValue]
+	| JavaUnop(unaryOperator, unopExpression) -> 
+		logStringToJavaAst "Unary operator"; 
+		logOperatorJavaAst unaryOperator; 
+		logJavaExpressionAst unopExpression
+	| JavaBinop(binaryOperator, binopExpression1, binopExpression2) -> 
+		logStringToJavaAst "Binary operator"; 
+		logOperatorJavaAst binaryOperator; 
+		logJavaExpressionAst binopExpression1;
+	  logJavaExpressionAst binopExpression2
   | JavaExpression(javaCall) -> logJavaCallAst javaCall
 	| JavaAssignment(variableName, variableValue) -> 
 		logListToJavaAst ["Java assignment of variable"; variableName; "to"];
@@ -123,6 +167,22 @@ and logJavaExpressionAst = function
 		match variableValue with 
 		    Some(javaExpressionValue) -> logJavaExpressionAst javaExpressionValue
 	    | None -> () (* do nothing *)
+and logOperatorJavaAst = function
+	  JavaNot -> logStringToJavaAst "java not"
+	| JavaAnd -> logStringToJavaAst "java and"
+	| JavaOr -> logStringToJavaAst "java or"
+  | JavaPlus -> logStringToJavaAst "java plus"
+	| JavaMinus -> logStringToJavaAst "java minus"
+	| JavaTimes -> logStringToJavaAst "java times"
+	| JavaDivide -> logStringToJavaAst "java divide"
+	| JavaMod -> logStringToJavaAst "java mod"
+	| JavaOperator(javaCall) -> logJavaCallAst javaCall
+	| JavaLessThan -> logStringToJavaAst "java less than"
+	| JavaLessThanOrEqual -> logStringToJavaAst "java less than or equal"
+	| JavaGreaterThan -> logStringToJavaAst "java greater than"
+	| JavaGreaterThanOrEqual -> logStringToJavaAst "java greater than or equal"
+	| JavaEqual -> logStringToJavaAst "equal"
+
 
 let logJavaStatementAst = function
     JavaStatement(javaExpression) -> logStringToJavaAst "Java bare statement"; logJavaExpressionAst javaExpression

@@ -3,13 +3,12 @@ open Ast;;
 type  variableDeclaration = 
 	  string * Ast.platoType
 
-type expressionDetail = 
-	  TypedBoolean of bool
-	| TypedNumber of int
-  | TypedIdentifier of string
-		
-type typedExpression =
-	  expressionDetail * Ast.platoType
+type typedExpression = 
+	  TypedBoolean of bool  * Ast.platoType
+	| TypedNumber of int  * Ast.platoType
+  | TypedIdentifier of string  * Ast.platoType
+	| TypedUnop of operator * Ast.platoType * typedExpression
+	| TypedBinop of operator * Ast.platoType * typedExpression * typedExpression
 
 type typedStatement = 
 	  TypedPrint of typedExpression

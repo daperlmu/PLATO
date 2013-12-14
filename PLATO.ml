@@ -9,10 +9,6 @@ exception PlatoError of string
 let undefinedException variableName =
 	PlatoError("Undeclared identifier " ^ variableName)
 
-let typeToString = function
-	  BooleanType -> "boolean"
-  | IntegerType -> "integer"
-	| NumberType(groupName) -> "number"
 let castException expressionType  variableType = 
 	PlatoError("Cannot cast from " ^ (typeToString expressionType) ^ " to " ^ (typeToString variableType))
 
@@ -45,31 +41,89 @@ let emptyEnviroment =
 	let emptyScope = { variables = [] }
 	in { scope = emptyScope }
 
+let getExpressionType = function 
+	  TypedBoolean(_, expressionType) -> expressionType
+	| TypedNumber(_, expressionType) -> expressionType
+  | TypedIdentifier(_, expressionType) -> expressionType
+	| TypedUnop(_, expressionType, _) -> expressionType
+	| TypedBinop(_, expressionType, _, _) -> expressionType
+
+let getOperatorTypes = function
+	  Not -> [BooleanType]
+	| And -> [BooleanType; BooleanType]
+	| Or -> [BooleanType; BooleanType]
+  | Plus -> [IntegerType; IntegerType]
+	| Minus -> [IntegerType; IntegerType]
+	| Times -> [IntegerType; IntegerType]
+	| Divide -> [IntegerType; IntegerType]
+	| Mod -> [IntegerType; IntegerType]
+	| Raise -> [IntegerType; IntegerType]
+	| LessThan -> [IntegerType; IntegerType]
+	| LessThanOrEqual -> [IntegerType; IntegerType]
+	| GreaterThan -> [IntegerType; IntegerType]
+	| GreaterThanOrEqual -> [IntegerType; IntegerType]
+	| Equal -> [IntegerType; IntegerType]
+
+let getOperatorReturnType = function
+	  Not -> BooleanType
+	| And -> BooleanType
+	| Or -> BooleanType
+  | Plus -> IntegerType
+	| Minus -> IntegerType
+	| Times -> IntegerType
+	| Divide -> IntegerType
+	| Mod -> IntegerType
+	| Raise -> IntegerType
+	| LessThan -> BooleanType
+	| LessThanOrEqual -> BooleanType
+	| GreaterThan -> BooleanType
+	| GreaterThanOrEqual -> BooleanType
+	| Equal -> BooleanType
+
 let rec checkExpression environment = function
-	  Boolean(booleanValue) -> TypedBoolean(booleanValue), BooleanType
-	| Number(numberValue) -> TypedNumber(numberValue), IntegerType
+	  Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
+	| Number(numberValue) -> TypedNumber(numberValue, IntegerType)
   | Identifier(variableName) -> 
 		  let variableDeclaration = 
 				try findVariable environment.scope variableName 
 			  with Not_found -> raise (undefinedException variableName)
 		  in  let (_, variableType) = variableDeclaration
-			    in TypedIdentifier(variableName), variableType
+			    in TypedIdentifier(variableName, variableType)
+	| Unop(unaryOperator, unopExpression) ->
+		let unaryExpression =  checkExpression environment unopExpression
+		in let [operatorType] = getOperatorTypes unaryOperator
+		   in let expressionType = (getExpressionType unaryExpression)
+			    in if canCast expressionType operatorType
+			       then TypedUnop(unaryOperator, getOperatorReturnType unaryOperator, unaryExpression)
+					   else raise(castException expressionType operatorType)
+	| Binop(binaryOperator, binaryExpression1, binaryExpression2) ->
+		let binaryExpression1 = checkExpression environment binaryExpression1
+		and binaryExpression2 = checkExpression environment binaryExpression2
+		in let [operatorType1; operatorType2] = getOperatorTypes binaryOperator
+		   in let expressionType1, expressionType2 = (getExpressionType binaryExpression1), (getExpressionType binaryExpression2)
+			 in if canCast expressionType1 operatorType1
+			    then if canCast expressionType2 operatorType2
+					     then TypedBinop(binaryOperator, getOperatorReturnType binaryOperator, binaryExpression1, binaryExpression2)
+							 else raise(castException expressionType2 operatorType1)
+					else raise(castException expressionType1 operatorType2)
 
 let rec checkStatement environment = function
 	  Print(expression) -> TypedPrint(checkExpression environment expression)
   | Assignment(variableName, newValue) -> 
 		let variableIdentifier = Identifier(variableName) 
-		in let (_, variableType) as variableDetails = checkExpression environment variableIdentifier
-			 in let (_, expressionType) as expressionDetails = checkExpression environment newValue
-			     in if canCast expressionType variableType
-				      then TypedAssignment((variableName, variableType), expressionDetails) 
-						  else raise(castException expressionType variableType)
+		in let variableDetails = checkExpression environment variableIdentifier
+			 in let expressionDetails = checkExpression environment newValue
+			     in let expressionType, variableType = (getExpressionType expressionDetails), (getExpressionType variableDetails)
+						  in if canCast (getExpressionType expressionDetails) (getExpressionType variableDetails)
+				         then TypedAssignment((variableName, variableType), expressionDetails) 
+						     else raise(castException expressionType variableType)
 	| Declaration(variableType, variableName, newValue) ->
-		let (checkedValue, expressionType) as expressionDetails = checkExpression environment newValue
-		   in if canCast expressionType variableType
-			    then (updateScope environment.scope (variableName, variableType);
-		            TypedDeclaration((variableName, variableType), expressionDetails))
-					else raise(castException expressionType variableType)
+		let expressionDetails = checkExpression environment newValue
+		   in let expressionType = (getExpressionType expressionDetails)  
+			    in if canCast expressionType variableType
+			       then (updateScope environment.scope (variableName, variableType);
+						       TypedDeclaration((variableName, variableType), expressionDetails))
+					   else raise(castException expressionType variableType)
 
 let checkStatementBlock environment = function
 	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement environment) statementList) 
@@ -81,15 +135,36 @@ let checkProgram = function
 	  Program(mainBlock) -> TypedProgram(checkMainBlock mainBlock)	 
 
 (* Convert Sast to Java Ast *)
+let createJavaOperator = function
+	  Not -> JavaNot
+	| And -> JavaAnd
+	| Or -> JavaOr
+  | Plus -> JavaPlus
+	| Minus -> JavaMinus
+	| Times -> JavaTimes
+	| Divide -> JavaDivide
+	| Mod -> JavaMod
+	| Raise -> JavaOperator(JavaCall("Math.pow", []))
+	| LessThan -> JavaLessThan
+	| LessThanOrEqual -> JavaLessThanOrEqual
+	| GreaterThan -> JavaGreaterThan
+	| GreaterThanOrEqual -> JavaGreaterThanOrEqual
+	| Equal -> JavaEqual
+
 let createJavaType = function
 	  BooleanType -> Bool
   | IntegerType -> Int
 	| NumberType(_) -> Int
 
-let createJavaExpression = function
-	  TypedBoolean(booleanValue), _ -> JavaBoolean(booleanValue)
-	| TypedNumber(numberValue), _ -> JavaInt(numberValue)
-  | TypedIdentifier(variableName), _ -> JavaVariable(variableName)
+let rec createJavaExpression = function
+	(* TODO need to generate casts here *)
+	  TypedBoolean(booleanValue, _) -> JavaBoolean(booleanValue)
+	| TypedNumber(numberValue, _)-> JavaInt(numberValue)
+  | TypedIdentifier(variableName, _) -> JavaVariable(variableName)
+	| TypedUnop(unaryOperator, operatorType, unopExpression) ->
+		JavaUnop(createJavaOperator unaryOperator, createJavaExpression unopExpression)
+	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->
+		JavaBinop(createJavaOperator binaryOperator, createJavaExpression binaryExpression1, createJavaExpression binaryExpression2)
 
 let createJavaStatement = function
 	  TypedPrint(expression) -> JavaStatement(JavaExpression(JavaCall("System.out.println", [createJavaExpression expression])))
@@ -106,6 +181,22 @@ let createJavaAst = function
 	  TypedProgram(typedMainBlock) -> JavaClassList(createJavaClass typedMainBlock)
 		
 (* Generate code from Java Ast *)		
+let generateJavaOperator logToFile = function 
+	  JavaNot -> logToFile "!"
+	| JavaAnd -> logToFile "&&"
+	| JavaOr -> logToFile "||"
+  | JavaPlus -> logToFile "+"
+	| JavaMinus -> logToFile "-"
+	| JavaTimes -> logToFile "*"
+	| JavaDivide -> logToFile "/"
+	| JavaMod -> logToFile "%"
+	| JavaOperator(JavaCall(methodName, _)) -> raise(Invalid_argument(methodName))
+	| JavaLessThan -> logToFile "<"
+	| JavaLessThanOrEqual -> logToFile "<="
+	| JavaGreaterThan -> logToFile ">"
+	| JavaGreaterThanOrEqual -> logToFile ">="
+	| JavaEqual -> logToFile "="
+
 let generateJavaType logToJavaFile = function
 	  Bool -> logToJavaFile "boolean "
 	| Int -> logToJavaFile "int "
@@ -113,16 +204,32 @@ let generateJavaType logToJavaFile = function
 let rec generateJavaCall logToJavaFile = function
 	  JavaCall(methodName, javaExpressionList) ->
 			logToJavaFile (String.concat "" [methodName; "("]);
+			(* TODO need commas if there are multiple arguments *)
 			ignore (List.map (generateJavaExpression logToJavaFile) javaExpressionList);
 			logToJavaFile ")"
 and generateJavaExpression logToJavaFile = function
 	  JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
 	| JavaInt(intValue) -> logToJavaFile (string_of_int intValue)
 	| JavaVariable(stringValue) -> logToJavaFile stringValue
+	| JavaUnop(javaOperator, javaExpression) -> 
+		generateJavaOperator logToJavaFile javaOperator;
+		logToJavaFile "(";
+		generateJavaExpression logToJavaFile javaExpression;
+		logToJavaFile ")"
+	| JavaBinop(javaOperator, javaExpression1, javaExpression2) -> 
+		(match javaOperator with
+		    JavaOperator(JavaCall(methodName, [])) -> generateJavaCall logToJavaFile (JavaCall(methodName, [javaExpression1; javaExpression2]))
+		  | _ -> logToJavaFile "(";
+				     generateJavaExpression logToJavaFile javaExpression1;
+						 logToJavaFile ")";
+				     generateJavaOperator logToJavaFile javaOperator;
+						 logToJavaFile "(";
+						 generateJavaExpression logToJavaFile javaExpression2;
+						 logToJavaFile ")")
   | JavaExpression(javaCall) -> generateJavaCall logToJavaFile javaCall
 	| JavaAssignment(variableName, variableValue) -> 
 		logToJavaFile (variableName ^ "=");
-		 generateJavaExpression logToJavaFile variableValue
+		generateJavaExpression logToJavaFile variableValue
 	| JavaDeclaration(variableType, variableName, variableValue) ->
 	  generateJavaType logToJavaFile variableType;
 		logToJavaFile (variableName ^ "=");
