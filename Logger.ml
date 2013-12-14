@@ -68,10 +68,29 @@ let logStringToSast logString =
 	logListToSast [logString]
 		
 let rec logExpressionSast = function
-	  TypedNumber(integerValue) -> logListToAst ["Number"; string_of_int integerValue; "Of Type"]
+	  TypedBoolean(booleanValue) -> logListToAst ["Boolean"; string_of_bool booleanValue]
+	| TypedNumber(integerValue) -> logListToAst ["Number"; string_of_int integerValue]
+  | TypedIdentifier(variableName) -> logListToAst ["Variable";  variableName]
 
 let logStatementSast = function
-	  TypedPrint(printValue, printType) -> logStringToSast "Print"; logExpressionSast(printValue); logPlatoTypeAst printType
+	  TypedPrint(printValue, printType) -> 
+			logStringToSast "Print"; 
+			logExpressionSast(printValue); 
+			logPlatoTypeAst printType
+	| TypedAssignment((variableName, variableType), (newValue, newValueType)) -> 
+		logListToSast ["Assign"; variableName; "of type"]; 
+		logPlatoTypeAst variableType;
+		logStringToSast " to value "; 
+		logExpressionSast(newValue);
+	  logStringToSast " of type ";  
+		logPlatoTypeAst newValueType
+	| TypedDeclaration((variableName, variableType), (newValue, newValueType)) ->
+	  logListToSast ["Declare"; variableName;  "as type"]; 
+		logPlatoTypeAst variableType;
+		logStringToSast " and assign to value "; 
+		logExpressionSast(newValue);
+	  logStringToSast " of type ";  
+		logPlatoTypeAst newValueType
 
 let logStatementBlockSast = function
 	  TypedStatementBlock(statementList) -> logListToSast ["StatementBlock of size"; string_of_int (List.length statementList)]; ignore (List.map logStatementSast statementList)
@@ -92,8 +111,18 @@ let logStringToJavaAst logString =
 let rec logJavaCallAst = function
     JavaCall(methodName, methodParameters) -> logListToJavaAst ["Java call to"; methodName; "with"; string_of_int (List.length methodParameters); "parameters"]; ignore (List.map logJavaExpressionAst methodParameters)
 and logJavaExpressionAst = function
-    JavaInt(intValue) -> logListToJavaAst ["Java int"; string_of_int intValue]
+	  JavaBoolean(booleanValue) -> logListToJavaAst ["Java int"; string_of_bool booleanValue]
+  | JavaInt(intValue) -> logListToJavaAst ["Java int"; string_of_int intValue]
+	| JavaVariable(stringValue) -> logListToJavaAst ["Java variable"; stringValue]
   | JavaExpression(javaCall) -> logJavaCallAst javaCall
+	| JavaAssignment(variableName, variableValue) -> 
+		logListToJavaAst ["Java assignment of variable"; variableName; "to"];
+		logJavaExpressionAst variableValue
+	| JavaDeclaration(variableType, variableName, variableValue) ->
+	  logListToJavaAst ["Java assignment of variable"; variableName; "assigned to"];
+		match variableValue with 
+		    Some(javaExpressionValue) -> logJavaExpressionAst javaExpressionValue
+	    | None -> () (* do nothing *)
 
 let logJavaStatementAst = function
     JavaStatement(javaExpression) -> logStringToJavaAst "Java bare statement"; logJavaExpressionAst javaExpression

@@ -1,11 +1,19 @@
 open Sast;;
 
+type javaType =
+	  Bool
+	| Int
+
 type javaCall = 
 	  JavaCall of string * javaExpression list
 and 
 javaExpression = 
-	  JavaInt of int
+	  JavaBoolean of bool
+	| JavaInt of int
+  | JavaVariable of string
 	| JavaExpression of javaCall
+	| JavaAssignment of string * javaExpression
+	| JavaDeclaration of javaType * string * javaExpression option
 
 type javaStatement =
 	  JavaStatement of javaExpression
