@@ -7,8 +7,8 @@ SOURCES = Ast.mli Sast.mli JavaAst.mli Logger.ml Parser.mly Scanner.mll PLATO.ml
 RESULT = platoc
 
 # paths to additional libraries
-LIBS = oUnit
-INCDIRS = /usr/local/lib/ocaml/site-lib/oUnit
+#LIBS = oUnit
+#INCDIRS = /usr/local/lib/ocaml/site-lib/oUnit
 
 # generate type information (.annot files)
 ANNOTATE = yes
