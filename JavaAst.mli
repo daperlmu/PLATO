@@ -4,35 +4,13 @@ type javaType =
 	  Bool
 	| Int
 
-type javaCall = 
-	  JavaCall of string * javaExpression list
-and 
-javaExpression = 
+type javaExpression = 
 	  JavaBoolean of bool
 	| JavaInt of int
   | JavaVariable of string
-	| JavaUnop of javaOperator * javaExpression
-	| JavaBinop of javaOperator * javaExpression * javaExpression
-	| JavaExpression of javaCall
 	| JavaAssignment of string * javaExpression
 	| JavaDeclaration of javaType * string * javaExpression option
-and 
-javaOperator = 
-	  JavaNot
-	| JavaAnd
-	| JavaOr
-	| JavaNegation
-  | JavaPlus 
-	| JavaMinus
-	| JavaTimes
-	| JavaDivide
-	| JavaMod
-	| JavaOperator of javaCall
-	| JavaLessThan
-	| JavaLessThanOrEqual
-	| JavaGreaterThan
-	| JavaGreaterThanOrEqual
-	| JavaEqual
+	| JavaCall of string * string * javaExpression list
 
 type javaStatement =
 	  JavaStatement of javaExpression

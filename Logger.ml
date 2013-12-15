@@ -4,21 +4,21 @@ open Sast;;
 open JavaAst;;
 
 let operatorToString = function
-	  Not ->  "Not"
-	| And -> "And"
-	| Or -> "Or"
-	| Negation -> "Negation"
-	| Plus -> "Plus"
-	| Minus -> "Minus"
-	| Times -> "Times"
-	| Divide -> "Divide"
-	| Mod -> "Mod"
-	| Raise -> "Raise"
-	| LessThan -> "LessThan"
-	| LessThanOrEqual -> "LessThanOrEqual"
-	| GreaterThan -> "GreaterThan"
-	| GreaterThanOrEqual -> "GreaterThanOrEqual"
-	| Equal ->  "Equal"
+	  Not ->  "not"
+	| And -> "and"
+	| Or -> "or"
+	| Negation -> "negation"
+	| Plus -> "plus"
+	| Minus -> "minus"
+	| Times -> "times"
+	| Divide -> "divide"
+	| Mod -> "mod"
+	| Raise -> "raise"
+	| LessThan -> "lessThan"
+	| LessThanOrEqual -> "lessThanOrEqual"
+	| GreaterThan -> "greaterThan"
+	| GreaterThanOrEqual -> "greaterThanOrEqual"
+	| Equal ->  "equal"
 
 let logToFile mode permissions newline fileName logString =
 	let fileHandle = open_out_gen mode permissions fileName
@@ -69,9 +69,9 @@ let logProgramAst = function
 (* Logging for PLATO SAST *)
 
 let typeToString = function
-	  BooleanType -> "boolean"
-  | IntegerType -> "integer"
-	| NumberType(groupName) -> "number"
+	  BooleanType -> "PlatoBoolean"
+  | IntegerType -> "PlatoInteger"
+	| NumberType(groupName) -> groupName
 
 let logListToSast logStringList = 
 	(logToFileAppend true) "Sast.log" (String.concat " " logStringList)
@@ -136,47 +136,19 @@ let logListToJavaAst logStringList =
 let logStringToJavaAst logString = 
 	logListToJavaAst [logString]
 
-let rec logJavaCallAst = function
-    JavaCall(methodName, methodParameters) -> logListToJavaAst ["Java call to"; methodName; "with"; string_of_int (List.length methodParameters); "parameters"]; ignore (List.map logJavaExpressionAst methodParameters)
-and logJavaExpressionAst = function
+let rec logJavaExpressionAst = function
 	  JavaBoolean(booleanValue) -> logListToJavaAst ["Java boolean"; string_of_bool booleanValue]
   | JavaInt(intValue) -> logListToJavaAst ["Java int"; string_of_int intValue]
 	| JavaVariable(stringValue) -> logListToJavaAst ["Java variable"; stringValue]
-	| JavaUnop(unaryOperator, unopExpression) -> 
-		logStringToJavaAst "Unary operator"; 
-		logOperatorJavaAst unaryOperator; 
-		logJavaExpressionAst unopExpression
-	| JavaBinop(binaryOperator, binopExpression1, binopExpression2) -> 
-		logStringToJavaAst "Binary operator"; 
-		logOperatorJavaAst binaryOperator; 
-		logJavaExpressionAst binopExpression1;
-	  logJavaExpressionAst binopExpression2
-  | JavaExpression(javaCall) -> logJavaCallAst javaCall
 	| JavaAssignment(variableName, variableValue) -> 
 		logListToJavaAst ["Java assignment of variable"; variableName; "to"];
 		logJavaExpressionAst variableValue
 	| JavaDeclaration(variableType, variableName, variableValue) ->
-	  logListToJavaAst ["Java assignment of variable"; variableName; "assigned to"];
+	  (logListToJavaAst ["Java assignment of variable"; variableName; "assigned to"];
 		match variableValue with 
 		    Some(javaExpressionValue) -> logJavaExpressionAst javaExpressionValue
-	    | None -> () (* do nothing *)
-and logOperatorJavaAst = function
-	  JavaNot -> logStringToJavaAst "java not"
-	| JavaAnd -> logStringToJavaAst "java and"
-	| JavaOr -> logStringToJavaAst "java or"
-	| JavaNegation -> logStringToJavaAst "java negation"
-  | JavaPlus -> logStringToJavaAst "java plus"
-	| JavaMinus -> logStringToJavaAst "java minus"
-	| JavaTimes -> logStringToJavaAst "java times"
-	| JavaDivide -> logStringToJavaAst "java divide"
-	| JavaMod -> logStringToJavaAst "java mod"
-	| JavaOperator(javaCall) -> logJavaCallAst javaCall
-	| JavaLessThan -> logStringToJavaAst "java less than"
-	| JavaLessThanOrEqual -> logStringToJavaAst "java less than or equal"
-	| JavaGreaterThan -> logStringToJavaAst "java greater than"
-	| JavaGreaterThanOrEqual -> logStringToJavaAst "java greater than or equal"
-	| JavaEqual -> logStringToJavaAst "equal"
-
+	    | None -> () (* do nothing *))
+	| JavaCall(className, methodName, methodParameters) -> logListToJavaAst ["Java call to"; className; "."; methodName; "with"; string_of_int (List.length methodParameters); "parameters"]; ignore (List.map logJavaExpressionAst methodParameters)
 
 let logJavaStatementAst = function
     JavaStatement(javaExpression) -> logStringToJavaAst "Java bare statement"; logJavaExpressionAst javaExpression

@@ -2,6 +2,7 @@ open Ast;;
 open Logger;;
 open Sast;;
 open JavaAst;;
+open PlatoLibraryStrings;;
 open Filename;;
 
 exception PlatoError of string
@@ -144,23 +145,6 @@ let checkProgram = function
 	  Program(mainBlock) -> TypedProgram(checkMainBlock mainBlock)	 
 
 (* Convert Sast to Java Ast *)
-let createJavaOperator = function
-	  Not -> JavaNot
-	| And -> JavaAnd
-	| Or -> JavaOr
-	| Negation -> JavaNegation
-  | Plus -> JavaPlus
-	| Minus -> JavaMinus
-	| Times -> JavaTimes
-	| Divide -> JavaDivide
-	| Mod -> JavaMod
-	| Raise -> JavaOperator(JavaCall("Math.pow", []))
-	| LessThan -> JavaLessThan
-	| LessThanOrEqual -> JavaLessThanOrEqual
-	| GreaterThan -> JavaGreaterThan
-	| GreaterThanOrEqual -> JavaGreaterThanOrEqual
-	| Equal -> JavaEqual
-
 let createJavaType = function
 	  BooleanType -> Bool
   | IntegerType -> Int
@@ -172,12 +156,12 @@ let rec createJavaExpression = function
 	| TypedNumber(numberValue, _)-> JavaInt(numberValue)
   | TypedIdentifier(variableName, _) -> JavaVariable(variableName)
 	| TypedUnop(unaryOperator, operatorType, unopExpression) ->
-		JavaUnop(createJavaOperator unaryOperator, createJavaExpression unopExpression)
+		JavaCall(typeToString operatorType, operatorToString unaryOperator, [createJavaExpression unopExpression])
 	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->
-		JavaBinop(createJavaOperator binaryOperator, createJavaExpression binaryExpression1, createJavaExpression binaryExpression2)
+		JavaCall(typeToString operatorType, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
 
 let createJavaStatement = function
-	  TypedPrint(expression) -> JavaStatement(JavaExpression(JavaCall("System.out.println", [createJavaExpression expression])))
+	  TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
 	| TypedAssignment((variableName, variableType), newValue) -> JavaStatement(JavaAssignment(variableName, createJavaExpression newValue))
 	| TypedDeclaration((variableName, variableType), newValue) -> JavaStatement(JavaDeclaration(createJavaType variableType, variableName, Some(createJavaExpression newValue)))
 
@@ -185,68 +169,34 @@ let createJavaMain = function
 	  TypedStatementBlock(statementList) -> JavaMain(JavaBlock(List.map createJavaStatement statementList))
 
 let createJavaClass = function 
-	  TypedMainBlock(typedStatementList) -> [JavaClass("main", [createJavaMain typedStatementList])]
+	  TypedMainBlock(typedStatementList) -> [JavaClass("Main", [createJavaMain typedStatementList])]
 
 let createJavaAst = function
 	  TypedProgram(typedMainBlock) -> JavaClassList(createJavaClass typedMainBlock)
 		
 (* Generate code from Java Ast *)		
-let generateJavaOperator logToFile = function 
-	  JavaNot -> logToFile "!"
-	| JavaAnd -> logToFile "&&"
-	| JavaOr -> logToFile "||"
-	| JavaNegation -> logToFile "-"
-  | JavaPlus -> logToFile "+"
-	| JavaMinus -> logToFile "-"
-	| JavaTimes -> logToFile "*"
-	| JavaDivide -> logToFile "/"
-	| JavaMod -> logToFile "%"
-	| JavaOperator(JavaCall(methodName, _)) -> raise(Invalid_argument(methodName))
-	| JavaLessThan -> logToFile "<"
-	| JavaLessThanOrEqual -> logToFile "<="
-	| JavaGreaterThan -> logToFile ">"
-	| JavaGreaterThanOrEqual -> logToFile ">="
-	| JavaEqual -> logToFile "=="
-
 let generateJavaType logToJavaFile = function
 	  Bool -> logToJavaFile "boolean "
 	| Int -> logToJavaFile "int "
 
-let rec generateJavaCall logToJavaFile = function
-	  JavaCall(methodName, javaExpressionList) ->
-			logToJavaFile (String.concat "" [methodName; "("]);
-			(* TODO need commas if there are multiple arguments *)
-			ignore (List.map (generateJavaExpression logToJavaFile) javaExpressionList);
-			logToJavaFile ")"
-and generateJavaExpression logToJavaFile = function
+let rec generateJavaExpression logToJavaFile = function
 	  JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
 	| JavaInt(intValue) -> logToJavaFile (string_of_int intValue)
 	| JavaVariable(stringValue) -> logToJavaFile stringValue
-	| JavaUnop(javaOperator, javaExpression) -> 
-		generateJavaOperator logToJavaFile javaOperator;
-		logToJavaFile "(";
-		generateJavaExpression logToJavaFile javaExpression;
-		logToJavaFile ")"
-	| JavaBinop(javaOperator, javaExpression1, javaExpression2) -> 
-		(match javaOperator with
-		    JavaOperator(JavaCall(methodName, [])) -> generateJavaCall logToJavaFile (JavaCall(methodName, [javaExpression1; javaExpression2]))
-		  | _ -> logToJavaFile "(";
-				     generateJavaExpression logToJavaFile javaExpression1;
-						 logToJavaFile ")";
-				     generateJavaOperator logToJavaFile javaOperator;
-						 logToJavaFile "(";
-						 generateJavaExpression logToJavaFile javaExpression2;
-						 logToJavaFile ")")
-  | JavaExpression(javaCall) -> generateJavaCall logToJavaFile javaCall
 	| JavaAssignment(variableName, variableValue) -> 
 		logToJavaFile (variableName ^ "=");
 		generateJavaExpression logToJavaFile variableValue
 	| JavaDeclaration(variableType, variableName, variableValue) ->
-	  generateJavaType logToJavaFile variableType;
+	  (generateJavaType logToJavaFile variableType;
 		logToJavaFile (variableName ^ "=");
 		match variableValue with
 		  | Some(javaExpressionValue) -> generateJavaExpression logToJavaFile javaExpressionValue
-		  | None -> () (* do nothing *)
+		  | None -> () (* do nothing *))
+	| 	  JavaCall(className, methodName, javaExpressionList) ->
+			logToJavaFile (String.concat "" [className; "."; methodName; "("]);
+			(* TODO need commas if there are multiple arguments *)
+			ignore (List.map (generateJavaExpression logToJavaFile) javaExpressionList);
+			logToJavaFile ")"
 
 let generateJavaStatement logToJavaFile = function
 	  JavaStatement(javaExpression) ->
@@ -272,8 +222,27 @@ let generateJavaClass fileName = function
 				    ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
 			      logToJavaFile "}\n"
 			
+let generatePlatoCommonClass = 
+	let logToCommonClassFile = logToFileOverwrite false "PlatoCommon.java"
+	in logToCommonClassFile commonClassString 			
+			
+let generatePlatoBooleanClass = 
+	let logToBooleanClassFile = logToFileOverwrite false "PlatoBoolean.java"
+	in logToBooleanClassFile booleanClassString
+	
+let generatePlatoIntegerClass = 
+	let logToIntegerClassFile = logToFileOverwrite false "PlatoIntegers.java"
+	in logToIntegerClassFile integerClassString
+		
+let generatePlatoClasses = 
+	generatePlatoCommonClass;
+	generatePlatoBooleanClass;
+	generatePlatoIntegerClass			
+			
 let generateJavaCode fileName = function
-	  JavaClassList(javaClassList) -> ignore (List.map (generateJavaClass fileName) javaClassList)
+	  JavaClassList(javaClassList) -> 
+			generatePlatoClasses;
+			ignore (List.map (generateJavaClass fileName) javaClassList)
 
 (* TODO: Need to check for correct file extension and existance and permissions for file *)
 let compile fileName =
