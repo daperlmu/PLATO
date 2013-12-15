@@ -34,7 +34,7 @@ if ! [ $? -eq 0 ]
 then
 	echo "'$java_out' did NOT compile"
 	echo "COMPILE ERROR: $compile_result"
-	if [ $clean_directive="clean" ]
+	if [ $clean_directive == "clean" ]
 	then
 		rm -f $java_out
 	fi

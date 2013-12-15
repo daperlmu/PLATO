@@ -206,7 +206,7 @@ let generateJavaOperator logToFile = function
 	| JavaLessThanOrEqual -> logToFile "<="
 	| JavaGreaterThan -> logToFile ">"
 	| JavaGreaterThanOrEqual -> logToFile ">="
-	| JavaEqual -> logToFile "="
+	| JavaEqual -> logToFile "=="
 
 let generateJavaType logToJavaFile = function
 	  Bool -> logToJavaFile "boolean "
