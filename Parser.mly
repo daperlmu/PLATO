@@ -25,8 +25,7 @@
 %%
   
 platoType:
-    BOOLEAN_TYPE { BooleanType }
-  |	INTEGER_TYPE { IntegerType }
+  | BOOLEAN_TYPE { BooleanType }
 	| NUMBER_TYPE  { NumberType("INTEGERS") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
 	

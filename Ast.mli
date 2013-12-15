@@ -1,5 +1,5 @@
 type operator = 
-	  Not
+	| Not
 	| And
 	| Or
 	| Negation
@@ -16,19 +16,18 @@ type operator =
 	| Equal
 
 type platoType =
-	  BooleanType
-  | IntegerType
+	| BooleanType
 	| NumberType of string
 
 type expression = 
-	  Boolean of bool
+	| Boolean of bool
 	| Number of int
 	| Identifier of string
 	| Unop of operator * expression
 	| Binop of operator * expression * expression
 
 type  statement =
-	  Print of expression
+	| Print of expression
   | Assignment of string * expression
 	| Declaration of platoType * string * expression	
 				
