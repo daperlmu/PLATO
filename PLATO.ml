@@ -20,6 +20,7 @@ let canCast fromType toType =
 
 
 type symbolTable = {
+	(* TODO this would be faster with a set *)
   mutable variables : variableDeclaration list;
 }
 
@@ -49,9 +50,11 @@ let getExpressionType = function
 	| TypedBinop(_, expressionType, _, _) -> expressionType
 
 let getOperatorTypes = function
+	(* TODO should be numbers no integers *)
 	  Not -> [BooleanType]
 	| And -> [BooleanType; BooleanType]
 	| Or -> [BooleanType; BooleanType]
+	| Negation -> [IntegerType]
   | Plus -> [IntegerType; IntegerType]
 	| Minus -> [IntegerType; IntegerType]
 	| Times -> [IntegerType; IntegerType]
@@ -65,9 +68,11 @@ let getOperatorTypes = function
 	| Equal -> [IntegerType; IntegerType]
 
 let getOperatorReturnType = function
+ (* TODO should be numbers no integers *) 
 	  Not -> BooleanType
 	| And -> BooleanType
 	| Or -> BooleanType
+	| Negation -> IntegerType
   | Plus -> IntegerType
 	| Minus -> IntegerType
 	| Times -> IntegerType
@@ -90,22 +95,26 @@ let rec checkExpression environment = function
 		  in  let (_, variableType) = variableDeclaration
 			    in TypedIdentifier(variableName, variableType)
 	| Unop(unaryOperator, unopExpression) ->
-		let unaryExpression =  checkExpression environment unopExpression
-		in let [operatorType] = getOperatorTypes unaryOperator
-		   in let expressionType = (getExpressionType unaryExpression)
-			    in if canCast expressionType operatorType
-			       then TypedUnop(unaryOperator, getOperatorReturnType unaryOperator, unaryExpression)
-					   else raise(castException expressionType operatorType)
+		(let unaryExpression =  checkExpression environment unopExpression
+		in match getOperatorTypes unaryOperator with
+		       [operatorType] -> 
+						let expressionType = (getExpressionType unaryExpression)
+			      in if canCast expressionType operatorType
+			         then TypedUnop(unaryOperator, getOperatorReturnType unaryOperator, unaryExpression)
+					     else raise(castException expressionType operatorType)
+			   | _ -> raise(PlatoError("Unop must have exactly have one input type")))
 	| Binop(binaryOperator, binaryExpression1, binaryExpression2) ->
-		let binaryExpression1 = checkExpression environment binaryExpression1
+		(let binaryExpression1 = checkExpression environment binaryExpression1
 		and binaryExpression2 = checkExpression environment binaryExpression2
-		in let [operatorType1; operatorType2] = getOperatorTypes binaryOperator
-		   in let expressionType1, expressionType2 = (getExpressionType binaryExpression1), (getExpressionType binaryExpression2)
-			 in if canCast expressionType1 operatorType1
-			    then if canCast expressionType2 operatorType2
-					     then TypedBinop(binaryOperator, getOperatorReturnType binaryOperator, binaryExpression1, binaryExpression2)
-							 else raise(castException expressionType2 operatorType1)
-					else raise(castException expressionType1 operatorType2)
+		in match getOperatorTypes binaryOperator with
+		       [operatorType1; operatorType2] -> 
+						let expressionType1, expressionType2 = (getExpressionType binaryExpression1), (getExpressionType binaryExpression2)
+			      in if canCast expressionType1 operatorType1
+			         then if canCast expressionType2 operatorType2
+					          then TypedBinop(binaryOperator, getOperatorReturnType binaryOperator, binaryExpression1, binaryExpression2)
+							      else raise(castException expressionType2 operatorType1)
+					     else raise(castException expressionType1 operatorType2)
+		     | _ -> raise(PlatoError("Binop must have exactly have two input types")))
 
 let rec checkStatement environment = function
 	  Print(expression) -> TypedPrint(checkExpression environment expression)
@@ -139,6 +148,7 @@ let createJavaOperator = function
 	  Not -> JavaNot
 	| And -> JavaAnd
 	| Or -> JavaOr
+	| Negation -> JavaNegation
   | Plus -> JavaPlus
 	| Minus -> JavaMinus
 	| Times -> JavaTimes
@@ -185,6 +195,7 @@ let generateJavaOperator logToFile = function
 	  JavaNot -> logToFile "!"
 	| JavaAnd -> logToFile "&&"
 	| JavaOr -> logToFile "||"
+	| JavaNegation -> logToFile "-"
   | JavaPlus -> logToFile "+"
 	| JavaMinus -> logToFile "-"
 	| JavaTimes -> logToFile "*"
@@ -256,7 +267,7 @@ let generateJavaMethod logToJavaFile = function
 let generateJavaClass fileName = function
 	  JavaClass(javaClassName, javaMethodList) -> 
 			let fullClassName = String.concat "_" [javaClassName; fileName]
-			in let logToJavaFile = logToFileNoNewline (String.concat "" [fullClassName; ".java"])
+			in let logToJavaFile = logToFileAppend false (String.concat "" [fullClassName; ".java"])
 				 in logToJavaFile (String.concat " " ["public class"; fullClassName; "{\n"]);  
 				    ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
 			      logToJavaFile "}\n"

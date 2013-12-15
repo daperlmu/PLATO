@@ -3,36 +3,42 @@ open Ast;;
 open Sast;;
 open JavaAst;;
 
-let logToFileNoNewline fileName logString = 
-	let fileHandle = open_out_gen [Open_creat; Open_append] 0o777 fileName
-	in fprintf fileHandle "%s" logString; close_out fileHandle
+let operatorToString = function
+	  Not ->  "Not"
+	| And -> "And"
+	| Or -> "Or"
+	| Negation -> "Negation"
+	| Plus -> "Plus"
+	| Minus -> "Minus"
+	| Times -> "Times"
+	| Divide -> "Divide"
+	| Mod -> "Mod"
+	| Raise -> "Raise"
+	| LessThan -> "LessThan"
+	| LessThanOrEqual -> "LessThanOrEqual"
+	| GreaterThan -> "GreaterThan"
+	| GreaterThanOrEqual -> "GreaterThanOrEqual"
+	| Equal ->  "Equal"
 
-let logToFile fileName logString = 
-	let fileHandle = open_out_gen [Open_creat; Open_append] 0o777 fileName
-	in fprintf fileHandle "%s\n" logString; close_out fileHandle
+let logToFile mode permissions newline fileName logString =
+	let fileHandle = open_out_gen mode permissions fileName
+	in (if newline
+		 then fprintf fileHandle "%s\n"  logString
+		 else fprintf fileHandle "%s" logString);
+		 close_out fileHandle
+	
+let logToFileAppend = logToFile [Open_creat; Open_append] 0o777
+
+let logToFileOverwrite = logToFile [Open_creat; Open_wronly] 0o777
 
 (* Logging for PLATO AST *)
 let logListToAst logStringList = 
-	logToFile "Ast.log" (String.concat " " logStringList)
+	(logToFileAppend true) "Ast.log" (String.concat " " logStringList)
 	
 let logStringToAst logString = 
 	logListToAst [logString]
 
-let logOperatorAst = function
-	  Not ->  logStringToAst "Not"
-	| And -> logStringToAst "And"
-	| Or -> logStringToAst "Or"
-	| Plus -> logStringToAst "Plus"
-	| Minus -> logStringToAst "Minus"
-	| Times -> logStringToAst "Times"
-	| Divide -> logStringToAst "Divide"
-	| Mod -> logStringToAst "Mod"
-	| Raise -> logStringToAst "Raise"
-	| LessThan -> logStringToAst "LessThan"
-	| LessThanOrEqual -> logStringToAst "LessThanOrEqual"
-	| GreaterThan -> logStringToAst "GreaterThan"
-	| GreaterThanOrEqual -> logStringToAst "GreaterThanOrEqual"
-	| Equal ->  logStringToAst "Equal"
+let logOperatorAst operator = logStringToAst (operatorToString operator)
 
 let rec logPlatoTypeAst = function
 	  BooleanType -> logStringToAst "BooleanType"
@@ -61,32 +67,19 @@ let logProgramAst = function
 	  Program(mainBlock) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
 		
 (* Logging for PLATO SAST *)
+
 let typeToString = function
 	  BooleanType -> "boolean"
   | IntegerType -> "integer"
 	| NumberType(groupName) -> "number"
 
 let logListToSast logStringList = 
-	logToFile "Sast.log" (String.concat " " logStringList)
+	(logToFileAppend true) "Sast.log" (String.concat " " logStringList)
 	
 let logStringToSast logString = 
 	logListToSast [logString]
-		
-let logOperatorSast = function
-	  Not -> logStringToSast "not"
-	| And -> logStringToSast "and"
-	| Or -> logStringToSast "or"
-  | Plus -> logStringToSast "plus"
-	| Minus -> logStringToSast "minus"
-	| Times -> logStringToSast "times"
-	| Divide -> logStringToSast "divide"
-	| Mod -> logStringToSast "mod"
-	| Raise -> logStringToSast "raise"
-	| LessThan -> logStringToSast "less than"
-	| LessThanOrEqual -> logStringToSast "less than or equal"
-	| GreaterThan -> logStringToSast "greater than"
-	| GreaterThanOrEqual -> logStringToSast "greater than or equal"
-	| Equal -> logStringToSast "equal"
+	
+let logOperatorSast operator = logStringToSast (operatorToString operator)	
 
 let logPlatoTypeSast = function
 		BooleanType -> logStringToSast "Boolean Type"
@@ -138,7 +131,7 @@ let logProgramSast = function
 		
 (* Logging for Java AST *)
 let logListToJavaAst logStringList = 
-	logToFile "JavaAst.log" (String.concat " " logStringList)
+	(logToFileAppend true) "JavaAst.log" (String.concat " " logStringList)
 	
 let logStringToJavaAst logString = 
 	logListToJavaAst [logString]
@@ -171,6 +164,7 @@ and logOperatorJavaAst = function
 	  JavaNot -> logStringToJavaAst "java not"
 	| JavaAnd -> logStringToJavaAst "java and"
 	| JavaOr -> logStringToJavaAst "java or"
+	| JavaNegation -> logStringToJavaAst "java negation"
   | JavaPlus -> logStringToJavaAst "java plus"
 	| JavaMinus -> logStringToJavaAst "java minus"
 	| JavaTimes -> logStringToJavaAst "java times"

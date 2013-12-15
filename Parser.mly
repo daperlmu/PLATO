@@ -35,7 +35,7 @@ expression:
 	|	NUMBER { Number($1) }
 	| IDENTIFIER { Identifier($1) }
 	| NOT expression { Unop(Not, $2) }
-	| MINUS expression %prec NEGATION	{ Unop(Minus, $2) }
+	| MINUS expression %prec NEGATION	{ Unop(Negation, $2) }
   | expression OR expression { Binop(Or, $1, $3) }
 	| expression AND expression { Binop(And, $1, $3) }
 	| expression PLUS expression { Binop(Plus, $1, $3) }
