@@ -215,9 +215,13 @@ let generateJavaType logToJavaFile = function
 let rec generateJavaCall logToJavaFile = function
 	  JavaCall(methodName, javaExpressionList) ->
 			logToJavaFile (String.concat "" [methodName; "("]);
-			(* TODO need commas if there are multiple arguments *)
-			ignore (List.map (generateJavaExpression logToJavaFile) javaExpressionList);
+			(match javaExpressionList with
+				[] -> ()
+				| [first] -> ignore (generateJavaExpression logToJavaFile first)
+				| first::rest -> ignore (generateJavaExpression logToJavaFile first);
+				   ignore (List.map (fun elem -> logToJavaFile ","; generateJavaExpression logToJavaFile elem) rest));
 			logToJavaFile ")"
+
 and generateJavaExpression logToJavaFile = function
 	  JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
 	| JavaInt(intValue) -> logToJavaFile (string_of_int intValue)
