@@ -192,10 +192,13 @@ let rec generateJavaExpression logToJavaFile = function
 		match variableValue with
 		  | Some(javaExpressionValue) -> generateJavaExpression logToJavaFile javaExpressionValue
 		  | None -> () (* do nothing *))
-	| 	  JavaCall(className, methodName, javaExpressionList) ->
+	| JavaCall(className, methodName, javaExpressionList) ->
 			logToJavaFile (String.concat "" [className; "."; methodName; "("]);
-			(* TODO need commas if there are multiple arguments *)
-			ignore (List.map (generateJavaExpression logToJavaFile) javaExpressionList);
+			(match javaExpressionList with
+				[] -> ()
+				| [first] -> ignore (generateJavaExpression logToJavaFile first)
+				| first::rest -> ignore (generateJavaExpression logToJavaFile first);
+				   ignore (List.map (fun elem -> logToJavaFile ","; generateJavaExpression logToJavaFile elem) rest));
 			logToJavaFile ")"
 
 let generateJavaStatement logToJavaFile = function

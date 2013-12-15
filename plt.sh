@@ -2,7 +2,7 @@
 
 source_file_path=$1
 source_file=`echo $source_file_path | rev | cut -d "/" -f1 | rev`
-java_out="main_"${source_file:0:-4}".java"
+java_out="Main_"${source_file:0:-4}".java"
 clean_directive=$2
 
 if ! [ -e "$source_file_path" ]
@@ -51,7 +51,7 @@ fi
 if [ $clean_directive == "clean" ]
 then
 	rm -f $java_out
-	rm -f "main_"${source_file:0:-4}".class"
+	rm -f "Main_"${source_file:0:-4}".class"
 fi
 exit 0
 

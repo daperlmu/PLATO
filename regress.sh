@@ -11,7 +11,7 @@ do
 	echo ''
 
 	source_file_path=$tests_dir"/"$source_file
-	java_out="main_"${source_file:0:-4}".java"
+	java_out="Main_"${source_file:0:-4}".java"
 	./plt.sh $source_file_path dirty no_run
 	if ! [ $? -eq 0 ]
 	then
@@ -23,9 +23,9 @@ do
 		then
 			rm -f $java_out
 		fi
-		if [ -e "main_"${source_file:0:-4}".class" ]
+		if [ -e "Main_"${source_file:0:-4}".class" ]
 		then
-			rm -f "main_"${source_file:0:-4}".class"
+			rm -f "Main_"${source_file:0:-4}".class"
 		fi
 		echo -e '\n-------------END-------------------------------'
 		echo ''
@@ -40,7 +40,7 @@ do
 		echo "FAILURE $failure_count: '$expected_out' does not exist! Could not find an expected results file to compare against!"
 		echo "'$source_file' FAILED regression test!"
 		rm -f $java_out
-		rm -f "main_"${source_file:0:-4}".class"
+		rm -f "Main_"${source_file:0:-4}".class"
 		echo -e '\n-------------END-------------------------------'
 		echo ''
 		continue
@@ -57,7 +57,7 @@ do
 		echo "FAILURE $failure_count: Expected output does NOT match actual output!"
 		echo "'$source_file' FAILED regression test!"
 		rm -f $java_out
-		rm -f "main_"${source_file:0:-4}".class"
+		rm -f "Main_"${source_file:0:-4}".class"
 		echo -e '\n-------------END-------------------------------'
 		echo ''
 		continue
@@ -65,7 +65,7 @@ do
 
 	echo "'$source_file' PASSED regression test!"
 	rm -f $java_out
-	rm -f "main_"${source_file:0:-4}".class"
+	rm -f "Main_"${source_file:0:-4}".class"
 	echo -e '\n-------------END-------------------------------'
 	echo ''
 	passes[$pass_count]=$source_file

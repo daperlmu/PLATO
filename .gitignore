@@ -13,3 +13,4 @@ Scanner.ml
 platoc
 
 *.log
+*.java
