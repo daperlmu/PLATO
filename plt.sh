@@ -2,7 +2,8 @@
 
 source_file_path=$1
 source_file=`echo $source_file_path | rev | cut -d "/" -f1 | rev`
-java_out="Main_"${source_file:0:-4}".java"
+str_len=${#source_file}
+java_out="Main_"${source_file:0:`echo $str_len - 4 | bc`}".java"
 clean_directive=$2
 
 if ! [ -e "$source_file_path" ]
@@ -46,12 +47,13 @@ if [ $3 == "run" ]
 then
 	echo -e "\n"
 	echo "RUNNING..."
-	java ${java_out:0:-5}
+	java_out_len=${#java_out}
+	java ${java_out:0:`echo $java_out_len - 5 | bc`}
 fi
 if [ $clean_directive == "clean" ]
 then
 	rm -f $java_out
-	rm -f "Main_"${source_file:0:-4}".class"
+	rm -f "Main_"${source_file:0:`echo $str_len - 4 | bc`}".class"
 fi
 exit 0
 
