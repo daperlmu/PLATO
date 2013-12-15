@@ -21,6 +21,7 @@ javaOperator =
 	  JavaNot
 	| JavaAnd
 	| JavaOr
+	| JavaNegation
   | JavaPlus 
 	| JavaMinus
 	| JavaTimes

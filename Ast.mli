@@ -2,6 +2,7 @@ type operator =
 	  Not
 	| And
 	| Or
+	| Negation
   | Plus 
 	| Minus
 	| Times
