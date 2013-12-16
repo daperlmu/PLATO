@@ -1,11 +1,11 @@
 %{ open Ast open Logger %}
 
-%token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE
+%token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE VOID_TYPE
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
 %token PLUS MINUS TIMES DIVIDE PERCENT CARET AND OR 
-%token OVER PRINT 
-%token COLON SEMICOLON OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF
+%token OVER PRINT RETURN
+%token COLON SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF
 %token <bool> BOOLEAN
 %token <int> NUMBER
 %token <string> IDENTIFIER
@@ -18,6 +18,7 @@
 %left TIMES DIVIDE PERCENT
 %nonassoc NOT NEGATION
 %right CARET
+%left LPAREN RPAREN
 
 %start program
 %type <Ast.program> program
@@ -29,6 +30,9 @@ platoType:
 	| INTEGER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
+
+platoVoidType:
+	VOID_TYPE { VoidType }
 
 expressionList:
 	expression
@@ -54,9 +58,11 @@ expression:
 	| expression GREATER_THAN EQUAL expression %prec GREATER_THAN_OR_EQUAL { Binop(GreaterThanOrEqual, $1, $4) }
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
 	| OPEN_BRACE expressionList CLOSE_BRACE { Set($2) }
+	| LPAREN expression RPAREN { $2 }
 	
 statement:
     PRINT expression SEMICOLON { Print($2) }
+    | RETURN expression SEMICOLON
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
 	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
 	
@@ -66,9 +72,32 @@ statementList:
 	
 statementBlock: 
     OPEN_BRACE statementList CLOSE_BRACE { StatementBlock(List.rev $2) }
-	
+
+parameter:
+	platoType IDENTIFIER { Parameter($1, $2) }
+
+parameterList:
+	{ [] }
+	| parameterList parameter { $2::$1 }
+
+functionHeader:
+	platoFunctionType IDENTIFIER LPAREN parameterList RPAREN { { returnType = $1;
+														 functionName = $2;
+														 parameters = List.rev $4 } }
+	| IDENTIFIER LPAREN parameterList RPAREN { { returnType = VoidType;
+												 functionName = $1;
+												 parameters = List.rev $3 } }											 
+
+
+functionBlock:
+	functionHeader statementBlock { FunctionDeclaration($1, $2) }
+
 mainBlock:
     MAIN_HEADER statementBlock { MainBlock($2) }
 
+bodyBlockList:
+  { [] }
+  | bodyBlockList functionBlock { $2::$1 }
+
 program:
-    mainBlock  { Program($1) }
+    mainBlock bodyBlockList { Program($1, List.rev $2) }

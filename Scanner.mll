@@ -5,6 +5,7 @@ rule token = parse
 	| "BOOLEAN" { BOOLEAN_TYPE }
 	| "INTEGER" { INTEGER_TYPE }
 	| "NUMBER" { NUMBER_TYPE }
+	| "VOID" { VOID_TYPE }
   | "TRUE" { BOOLEAN(true) }
 	| "FALSE" { BOOLEAN(false) }
 	| "NOT" { NOT }
@@ -12,6 +13,7 @@ rule token = parse
 	| "AND" { AND }
 	| "OVER" { OVER }
 	| "PRINT" { PRINT }
+	| "RETURN" { RETURN }
 	| "main()" { MAIN_HEADER }
 	| '+' { PLUS }
 	| '-' { MINUS }
@@ -28,6 +30,8 @@ rule token = parse
 	| '}' { CLOSE_BRACE }
 	| '[' { OPEN_BRACKET }
 	| ']' { CLOSE_BRACKET }
+	| '(' { LPAREN }
+	| ')' { RPAREN }
 	| '0' { NUMBER(0) }
   | ['1'-'9']['0'-'9']* as number { NUMBER(int_of_string number) }
 	| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* as identifier { IDENTIFIER(identifier) }

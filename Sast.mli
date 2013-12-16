@@ -17,9 +17,15 @@ type typedStatement =
 	
 type typedStatementBlock = 
 	  TypedStatementBlock of typedStatement list
-				
+
+type typedParameter = 
+	  TypedParameter of variableDeclaration
+	  
+type typedFunctionBlock =
+	  TypedFunctionBlock of Ast.functionHeader * typedStatementBlock
+
 type typedMainBlock = 
 	  TypedMainBlock of typedStatementBlock
 		
 type typedProgram = 
-	  TypedProgram of typedMainBlock
+	  TypedProgram of typedMainBlock * typedFunctionBlock list

@@ -19,6 +19,11 @@ type platoType =
 	| BooleanType
 	| NumberType of string
 
+type platoFunctionType =
+	| VoidType
+	| BooleanType
+	| NumberType of string
+
 type expression = 
 	| Boolean of bool
 	| Number of int
@@ -33,9 +38,20 @@ type  statement =
 				
 type statementBlock = 
 	  StatementBlock of statement list
-		
+
+type parameter = Parameter of platoType * string
+
+type functionHeader = {
+    returnType : platoFunctionType;
+    functionName : string;
+    parameters : parameter list;
+  }
+
+type functionBlock = 
+	  FunctionDeclaration of functionHeader * statementBlock
+
 type mainBlock = 
 	  MainBlock of statementBlock
 		
 type program  =
-	  Program of mainBlock
+	  Program of mainBlock * functionBlock list

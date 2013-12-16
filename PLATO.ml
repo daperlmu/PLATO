@@ -275,10 +275,10 @@ let checkStatementBlock environment = function
 	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement environment) statementList) 
 
 let checkMainBlock = function
-	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock)
+	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock, checkFunction)
 
 let checkProgram = function
-	  Program(mainBlock) -> TypedProgram(checkMainBlock mainBlock)	 
+	  Program(mainBlock, functionBlockList) -> TypedProgram(checkMainBlock mainBlock, checkBodyBlockList functionBlockList)	 
 
 (* Convert Sast to Java Ast *)
 let createJavaType = function
