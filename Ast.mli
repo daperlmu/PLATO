@@ -30,6 +30,7 @@ type expression =
 	| Identifier of string
 	| Unop of operator * expression
 	| Binop of operator * expression * expression
+	| SetLiteral of expression
 
 type  statement =
 	| Print of expression

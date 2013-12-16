@@ -51,6 +51,7 @@ let getExpressionType = function
   | TypedIdentifier(_, expressionType) -> expressionType
 	| TypedUnop(_, expressionType, _) -> expressionType
 	| TypedBinop(_, expressionType, _, _) -> expressionType
+	| TypedSet(expressionType, _) -> expressionType
 
 let canApplyNot = function
 	| [BooleanType] -> true
@@ -252,6 +253,10 @@ let rec checkExpression environment = function
 		    in if canApplyOperator expressionTypeList binaryOperator
 			     then TypedBinop(binaryOperator, getOperatorReturnType expressionTypeList binaryOperator, binaryExpression1, binaryExpression2)
 			     else raise(operatorException binaryOperator expressionTypeList))
+	| SetLiteral(setopExpression) ->
+		(let setExpression =  checkExpression environment setopExpression
+		 in let expressionType = getExpressionType setExpression
+		 	in TypedSet(expressionType, setExpression))
 
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
@@ -293,6 +298,8 @@ let rec createJavaExpression = function
 		JavaCall(getOperatorCallClass [getExpressionType unopExpression] unaryOperator, operatorToString unaryOperator, [createJavaExpression unopExpression])
 	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->
 		JavaCall(getOperatorCallClass [getExpressionType binaryExpression1; getExpressionType binaryExpression2] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
+	| TypedSet(setType, setExpression) ->
+		JavaCall("SetLiterals", "newHashSet", [createJavaExpression setExpression])
 
 let createJavaStatement = function
 	  TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
@@ -370,11 +377,16 @@ let generatePlatoBooleanClass =
 let generatePlatoIntegerClass = 
 	let logToIntegerClassFile = logToFileOverwrite false "Integers.java"
 	in logToIntegerClassFile integerClassString
+
+let generatePlatoSetClass = 
+	let logToIntegerClassFile = logToFileOverwrite false "SetLiterals.java"
+	in logToIntegerClassFile setLiteralsClassString
 		
 let generatePlatoClasses = 
 	generatePlatoCommonClass;
 	generatePlatoBooleanClass;
-	generatePlatoIntegerClass			
+	generatePlatoIntegerClass;
+	generatePlatoSetClass		
 			
 let generateJavaCode fileName = function
 	  JavaClassList(javaClassList) -> 

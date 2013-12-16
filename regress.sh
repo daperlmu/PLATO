@@ -51,7 +51,8 @@ do
 	java_out_len=${#java_out}
 	java ${java_out:0:`echo $java_out_len - 5 | bc`} > ${java_out:0:`echo $java_out_len - 5 | bc`}.actual.result
 
-	diff_result=`diff ${java_out:0:`echo $java_out_len - 5 | bc`}.actual.result $expected_out`
+	subs_diff_result=`echo $java_out_len - 5 | bc`
+	diff_result=`diff ${java_out:0:$subs_diff_result}.actual.result $expected_out`
 
 	if ! [ $? -eq 0 ]
 	then
