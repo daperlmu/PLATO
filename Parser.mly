@@ -4,8 +4,8 @@
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
 %token PLUS MINUS TIMES DIVIDE PERCENT CARET AND OR 
-%token OVER PRINT 
-%token COLON SEMICOLON OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF
+%token OVER PRINT
+%token COLON COMMA SEMICOLON OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET
 %token <bool> BOOLEAN
 %token <int> NUMBER
 %token <string> IDENTIFIER
@@ -23,16 +23,25 @@
 %type <Ast.program> program
 
 %%
-  
+
 platoType:
   | BOOLEAN_TYPE { BooleanType }
 	| INTEGER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
 
-expressionList:
-	expression
-	| expression*
+/*
+restOfCommaSeparatedExpressionList
+	*//* nothing *//* { [] }
+	| COMMA expression expressionCommaSeparatedList {$2::$3}
+
+commaSeparatedExpressionList
+	*//* nothing *//* { [] }
+	| expression restOfCommaSeparatedExpressionList {$1::$2}
+
+setLiteral:
+	OPEN_BRACE commaSeparatedExpressionList CLOSE_BRACE {$2}
+*/
 
 expression:
     BOOLEAN { Boolean($1) }
@@ -53,13 +62,13 @@ expression:
 	| expression GREATER_THAN expression { Binop(GreaterThan, $1, $3) }
 	| expression GREATER_THAN EQUAL expression %prec GREATER_THAN_OR_EQUAL { Binop(GreaterThanOrEqual, $1, $4) }
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
-	| OPEN_BRACE expressionList CLOSE_BRACE { Set($2) }
+	| OPEN_BRACE expression CLOSE_BRACE {SetLiteral($2)}
 	
 statement:
     PRINT expression SEMICOLON { Print($2) }
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
 	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
-	
+
 statementList:
     /* empty */ { [] }
   | statementList statement { $2::$1 }

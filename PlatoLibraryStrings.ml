@@ -63,3 +63,44 @@ let integerClassString =
 			  return integer1 == integer2;\n
 			}\n
 		}"
+
+let setLiteralsClassString = 
+"import java.util.HashSet;
+public class SetLiterals {
+  public static HashSet<Object> newHashSet(Object ... objects) {
+  	HashSet<Object> returnable = new HashSet<Object>();
+  	for(Object object : objects) {
+    	returnable.add(object);
+    }
+    return returnable;
+  }
+  public static HashSet<Object> union(HashSet<Object> set1, HashSet<Object> set2) {
+  	HashSet<Object> returnable = new HashSet<Object>();
+  	for(Object object : set1) {
+    	returnable.add(object);
+    }
+    for(Object object : set2) {
+    	returnable.add(object);
+    }
+    return returnable;
+  }
+  public static HashSet<Object> intersection(HashSet<Object> set1, HashSet<Object> set2) {
+  	HashSet<Object> returnable = new HashSet<Object>();
+    for(Object object : set1) {
+    	if(set2.contains(object)) {
+    		returnable.add(object);
+    	}
+    }
+    return returnable;
+  }
+  public static HashSet<Object> difference(HashSet<Object> set1, HashSet<Object> set2) {
+  	HashSet<Object> returnable = new HashSet<Object>();
+  	for(Object object : set1) {
+    	returnable.add(object);
+    }
+    for(Object object : set2) {
+    	returnable.remove(object);
+    }
+    return returnable;
+  }
+}"

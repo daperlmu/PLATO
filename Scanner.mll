@@ -23,6 +23,7 @@ rule token = parse
 	| '>' { GREATER_THAN }
 	| '=' { EQUAL }
 	| ':' { COLON }
+	| ',' { COMMA }
   | ';' { SEMICOLON }
 	| '{' { OPEN_BRACE }
 	| '}' { CLOSE_BRACE }

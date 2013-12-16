@@ -50,6 +50,7 @@ let rec logExpressionAst = function
 	| Identifier(identifierName) -> logListToAst ["Identifier"; identifierName]
 	| Unop(operator, expression) -> logOperatorAst operator; logExpressionAst expression
 	| Binop(operator, expression1, expression2) -> logOperatorAst operator; logExpressionAst expression1; logExpressionAst expression2
+	| SetLiteral(expression) -> logExpressionAst expression
 
 let logStatementAst = function
 	  Print(printValue) -> logStringToAst "Print"; logExpressionAst(printValue)
@@ -101,6 +102,11 @@ let rec logExpressionSast = function
 		logExpressionSast operatorExpression1;
 		logStringToSast "and acting on";
 		logExpressionSast operatorExpression2
+	| TypedSet(platoType, expression) ->
+		logStringToSast "set literal";
+		logListToSast ["of type";  typeToString platoType];
+		logStringToSast "containing the expression";
+		logExpressionSast expression
 
 let logStatementSast = function
 	  TypedPrint(printExpression) -> 

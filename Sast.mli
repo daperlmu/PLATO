@@ -9,12 +9,13 @@ type typedExpression =
   | TypedIdentifier of string  * Ast.platoType
 	| TypedUnop of operator * Ast.platoType * typedExpression
 	| TypedBinop of operator * Ast.platoType * typedExpression * typedExpression
+	| TypedSet of Ast.platoType * typedExpression
 
 type typedStatement = 
 	| TypedPrint of typedExpression
 	| TypedAssignment of variableDeclaration * typedExpression      
 	| TypedDeclaration of variableDeclaration * typedExpression
-	
+
 type typedStatementBlock = 
 	  TypedStatementBlock of typedStatement list
 				
