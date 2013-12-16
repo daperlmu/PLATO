@@ -253,10 +253,10 @@ let rec checkExpression environment = function
 		    in if canApplyOperator expressionTypeList binaryOperator
 			     then TypedBinop(binaryOperator, getOperatorReturnType expressionTypeList binaryOperator, binaryExpression1, binaryExpression2)
 			     else raise(operatorException binaryOperator expressionTypeList))
-	| SetLiteral(setopExpression) ->
-		(let setExpression =  checkExpression environment setopExpression
-		 in let expressionType = getExpressionType setExpression
-		 	in TypedSet(expressionType, setExpression))
+	| SetLiteral(setopExpressionList) ->
+		(let setExpressionList =  List.map (checkExpression environment) setopExpressionList
+		 in let expressionTypeList = List.map getExpressionType setExpressionList
+		 	in TypedSet(List.hd expressionTypeList, setExpressionList))
 
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
@@ -298,8 +298,8 @@ let rec createJavaExpression = function
 		JavaCall(getOperatorCallClass [getExpressionType unopExpression] unaryOperator, operatorToString unaryOperator, [createJavaExpression unopExpression])
 	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->
 		JavaCall(getOperatorCallClass [getExpressionType binaryExpression1; getExpressionType binaryExpression2] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
-	| TypedSet(setType, setExpression) ->
-		JavaCall("SetLiterals", "newHashSet", [createJavaExpression setExpression])
+	| TypedSet(setType, setExpressionList) ->
+		JavaCall("SetLiterals", "newHashSet", List.map createJavaExpression setExpressionList)
 
 let createJavaStatement = function
 	  TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))

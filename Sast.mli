@@ -9,7 +9,7 @@ type typedExpression =
   | TypedIdentifier of string  * Ast.platoType
 	| TypedUnop of operator * Ast.platoType * typedExpression
 	| TypedBinop of operator * Ast.platoType * typedExpression * typedExpression
-	| TypedSet of Ast.platoType * typedExpression
+	| TypedSet of Ast.platoType * typedExpression list
 
 type typedStatement = 
 	| TypedPrint of typedExpression

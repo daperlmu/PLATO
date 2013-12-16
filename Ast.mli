@@ -25,7 +25,7 @@ type expression =
 	| Identifier of string
 	| Unop of operator * expression
 	| Binop of operator * expression * expression
-	| SetLiteral of expression
+	| SetLiteral of expression list
 
 type  statement =
 	| Print of expression
