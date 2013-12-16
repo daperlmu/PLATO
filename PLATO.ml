@@ -177,6 +177,59 @@ let getOperatorReturnType inputTypes = function
 	| GreaterThanOrEqual -> BooleanType
 	| Equal -> BooleanType
 
+let getOperatorCallClass inputTypeList = function
+	| Not -> "Booleans"
+	| And -> "Booleans"
+	| Or -> "Booleans"
+	| Negation -> 
+		(match inputTypeList with
+		 | [NumberType(groupName)] -> groupName
+		 | _ -> raise(operatorException Negation inputTypeList)) 
+  | Plus -> 
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Plus inputTypeList)) 
+	| Minus -> 
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Minus inputTypeList)) 
+	| Times -> 
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Times inputTypeList)) 
+	| Divide ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Divide inputTypeList)) 
+	| Mod ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Mod inputTypeList)) 
+	| Raise ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Raise inputTypeList)) 
+	| LessThan -> 
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException LessThan inputTypeList)) 
+	| LessThanOrEqual ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException LessThanOrEqual inputTypeList)) 
+	| GreaterThan ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException GreaterThan inputTypeList)) 
+	| GreaterThanOrEqual ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException GreaterThanOrEqual inputTypeList)) 
+	| Equal ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Equal inputTypeList)) 
+
 let rec checkExpression environment = function
 	| Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
 	| Number(numberValue) -> TypedNumber(numberValue, NumberType("Integers"))
@@ -233,14 +286,13 @@ let createJavaType = function
 	| NumberType(_) -> JavaIntType
 
 let rec createJavaExpression = function
-	(* TODO need to generate casts here *)
 	  TypedBoolean(booleanValue, _) -> JavaBoolean(booleanValue)
 	| TypedNumber(numberValue, _)-> JavaInt(numberValue)
   | TypedIdentifier(variableName, _) -> JavaVariable(variableName)
 	| TypedUnop(unaryOperator, operatorType, unopExpression) ->
-		JavaCall(typeToString operatorType, operatorToString unaryOperator, [createJavaExpression unopExpression])
+		JavaCall(getOperatorCallClass [getExpressionType unopExpression] unaryOperator, operatorToString unaryOperator, [createJavaExpression unopExpression])
 	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->
-		JavaCall(typeToString operatorType, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
+		JavaCall(getOperatorCallClass [getExpressionType binaryExpression1; getExpressionType binaryExpression2] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
 
 let createJavaStatement = function
 	  TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))

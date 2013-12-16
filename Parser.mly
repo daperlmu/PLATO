@@ -26,7 +26,8 @@
   
 platoType:
   | BOOLEAN_TYPE { BooleanType }
-	| NUMBER_TYPE  { NumberType("INTEGERS") }
+	| INTEGER_TYPE  { NumberType("Integers") }
+	| NUMBER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
 	
 expression:

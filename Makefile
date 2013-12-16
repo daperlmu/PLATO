@@ -14,7 +14,7 @@ RESULT = platoc
 ANNOTATE = yes
 
 # additional files to delete
-TRASH = *.log, *.java
+TRASH = *.log *.java *.class *.actual.*
 
 # make target (see manual) : byte-code, debug-code, native-code, ...
 all: debug-code
