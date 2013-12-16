@@ -41,12 +41,11 @@ let logStringToAst logString =
 let logOperatorAst operator = logStringToAst (operatorToString operator)
 
 let rec logPlatoTypeAst = function
-	  BooleanType -> logStringToAst "BooleanType"
-	| IntegerType -> logStringToAst "IntegerType"
-	| NumberType(identifier) -> logListToAst ["NumberType"; "Over"; identifier]
+	| BooleanType -> logStringToAst "BooleanType"
+	| NumberType(gropuName) -> logListToAst ["Number Type over group "; gropuName]
 
 let rec logExpressionAst = function
-	  Boolean(booleanValue) -> logListToAst ["Boolean"; string_of_bool booleanValue]
+	| Boolean(booleanValue) -> logListToAst ["Boolean"; string_of_bool booleanValue]
 	| Number(integerValue) -> logListToAst ["Number"; string_of_int integerValue]
 	| Identifier(identifierName) -> logListToAst ["Identifier"; identifierName]
 	| Unop(operator, expression) -> logOperatorAst operator; logExpressionAst expression
@@ -69,8 +68,7 @@ let logProgramAst = function
 (* Logging for PLATO SAST *)
 
 let typeToString = function
-	  BooleanType -> "PlatoBoolean"
-  | IntegerType -> "PlatoInteger"
+	| BooleanType -> "Booleans"
 	| NumberType(groupName) -> groupName
 
 let logListToSast logStringList = 
@@ -82,13 +80,12 @@ let logStringToSast logString =
 let logOperatorSast operator = logStringToSast (operatorToString operator)	
 
 let logPlatoTypeSast = function
-		BooleanType -> logStringToSast "Boolean Type"
-  | IntegerType -> logStringToSast "Integer Type"
+	| BooleanType -> logStringToSast "Boolean Type"
 	| NumberType(groupName) -> logListToSast ["Number Type over group"; groupName]
 
 let rec logExpressionSast = function
-	  TypedBoolean(booleanValue, _) -> logListToSast ["Boolean"; string_of_bool booleanValue]
-	| TypedNumber(integerValue, _) -> logListToSast ["Number"; string_of_int integerValue]
+	| TypedBoolean(booleanValue, _) -> logListToSast ["Boolean"; string_of_bool booleanValue]
+	| TypedNumber(numberValue, numberType) -> logListToSast ["Number"; string_of_int numberValue; " over "; typeToString numberType]
   | TypedIdentifier(variableName, variableType) -> logListToSast ["Variable";  variableName; "of type"; typeToString variableType]
 	| TypedUnop(unaryOperator, operatorType, operatorExpression) -> 
 		logStringToSast "unary operator"; 
@@ -137,7 +134,7 @@ let logStringToJavaAst logString =
 	logListToJavaAst [logString]
 
 let rec logJavaExpressionAst = function
-	  JavaBoolean(booleanValue) -> logListToJavaAst ["Java boolean"; string_of_bool booleanValue]
+	| JavaBoolean(booleanValue) -> logListToJavaAst ["Java boolean"; string_of_bool booleanValue]
   | JavaInt(intValue) -> logListToJavaAst ["Java int"; string_of_int intValue]
 	| JavaVariable(stringValue) -> logListToJavaAst ["Java variable"; stringValue]
 	| JavaAssignment(variableName, variableValue) -> 
@@ -160,7 +157,8 @@ let logJavaMethodAst = function
 	  JavaMain(methodBlock) -> logStringToJavaAst "Java main"; logJavaBlockAst methodBlock
 
 let logJavaClassAst = function
-	  JavaClass(className, javaMethodList) -> logListToJavaAst ["Java class"; className; "with"; string_of_int (List.length javaMethodList); "methods"]; ignore (List.map logJavaMethodAst javaMethodList)
+	  JavaClass(className, javaMethodList) -> logListToJavaAst ["Java class"; className; "with "; string_of_int (List.length javaMethodList); "methods"]; 
+		ignore (List.map logJavaMethodAst javaMethodList)
 	
 let logJavaClassListAst = function
     JavaClassList(javaClassList) -> logListToJavaAst ["Java class list of size"; string_of_int (List.length javaClassList)]; ignore (List.map logJavaClassAst javaClassList)

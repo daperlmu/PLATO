@@ -1,11 +1,11 @@
 open Sast;;
 
 type javaType =
-	  Bool
-	| Int
+	| JavaBooleanType
+	| JavaIntType
 
 type javaExpression = 
-	  JavaBoolean of bool
+	| JavaBoolean of bool
 	| JavaInt of int
   | JavaVariable of string
 	| JavaAssignment of string * javaExpression

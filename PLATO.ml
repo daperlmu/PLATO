@@ -7,18 +7,20 @@ open Filename;;
 
 exception PlatoError of string
 
-let undefinedException variableName =
+let undefinedVariableException variableName =
 	PlatoError("Undeclared identifier " ^ variableName)
 
 let castException expressionType  variableType = 
 	PlatoError("Cannot cast from " ^ (typeToString expressionType) ^ " to " ^ (typeToString variableType))
+		
+let operatorException operator inputTypeList = 
+	PlatoError("Cannot apply " ^ (operatorToString operator) ^ " to type " ^ (String.concat ", " (List.map typeToString inputTypeList)))
 
 (* Convert Ast to Sast *)
 let canCast fromType toType = 
   if fromType = toType
 	then true
-	else false (* TODO we need to add autocasting here *)
-
+	else false
 
 type symbolTable = {
 	(* TODO this would be faster with a set *)
@@ -44,81 +46,215 @@ let emptyEnviroment =
 	in { scope = emptyScope }
 
 let getExpressionType = function 
-	  TypedBoolean(_, expressionType) -> expressionType
+	| TypedBoolean(_, expressionType) -> expressionType
 	| TypedNumber(_, expressionType) -> expressionType
   | TypedIdentifier(_, expressionType) -> expressionType
 	| TypedUnop(_, expressionType, _) -> expressionType
 	| TypedBinop(_, expressionType, _, _) -> expressionType
 
-let getOperatorTypes = function
-	(* TODO should be numbers no integers *)
-	  Not -> [BooleanType]
-	| And -> [BooleanType; BooleanType]
-	| Or -> [BooleanType; BooleanType]
-	| Negation -> [IntegerType]
-  | Plus -> [IntegerType; IntegerType]
-	| Minus -> [IntegerType; IntegerType]
-	| Times -> [IntegerType; IntegerType]
-	| Divide -> [IntegerType; IntegerType]
-	| Mod -> [IntegerType; IntegerType]
-	| Raise -> [IntegerType; IntegerType]
-	| LessThan -> [IntegerType; IntegerType]
-	| LessThanOrEqual -> [IntegerType; IntegerType]
-	| GreaterThan -> [IntegerType; IntegerType]
-	| GreaterThanOrEqual -> [IntegerType; IntegerType]
-	| Equal -> [IntegerType; IntegerType]
+let canApplyNot = function
+	| [BooleanType] -> true
+	| _ -> false
 
-let getOperatorReturnType = function
- (* TODO should be numbers no integers *) 
-	  Not -> BooleanType
+let canApplyOr = function
+	| [BooleanType; BooleanType] -> true
+	| _ -> false
+
+let canApplyAnd = function
+	| [BooleanType; BooleanType] -> true
+	| _ -> false
+
+let canApplyNegation = function
+	| [NumberType(_)] -> true
+	| _ -> false
+
+let canApplyNegation = function
+	| [NumberType(_)] -> true
+	| _ -> false
+
+let canApplyPlus = function
+	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| _ -> false
+
+let canApplyMinus = function
+	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| _ -> false
+
+(* TODO need to make this work for rings *)
+let canApplyTimes = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+(* TODO need to make this work for fields *)
+let canApplyDivide = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyDivide = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyMod = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyRaise = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyLessThan = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyLessThanOrEqual = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyGreaterThan = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyGreaterThanOrEqual = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyEqual = function
+	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| _ -> false
+
+let canApplyOperator inputTypeList = function
+	| Not -> canApplyNot inputTypeList
+	| And -> canApplyAnd inputTypeList
+	| Or -> canApplyOr inputTypeList
+	| Negation -> canApplyNegation inputTypeList
+  | Plus -> canApplyPlus inputTypeList
+	| Minus -> canApplyMinus inputTypeList
+	| Times -> canApplyTimes inputTypeList
+	| Divide -> canApplyDivide inputTypeList
+	| Mod -> canApplyMod inputTypeList
+	| Raise -> canApplyRaise inputTypeList
+	| LessThan -> canApplyLessThan inputTypeList
+	| LessThanOrEqual -> canApplyLessThanOrEqual inputTypeList
+	| GreaterThan -> canApplyGreaterThan inputTypeList
+	| GreaterThanOrEqual -> canApplyGreaterThanOrEqual inputTypeList
+	| Equal -> canApplyEqual inputTypeList
+
+let getOperatorReturnType inputTypes = function
+	| Not -> BooleanType
 	| And -> BooleanType
 	| Or -> BooleanType
-	| Negation -> IntegerType
-  | Plus -> IntegerType
-	| Minus -> IntegerType
-	| Times -> IntegerType
-	| Divide -> IntegerType
-	| Mod -> IntegerType
-	| Raise -> IntegerType
+	| Negation -> 
+		(match inputTypes with 
+		 | [inputType] -> inputType
+		 | _ -> raise(PlatoError("Negation must have exactly have one input type")))
+  | Plus -> 
+	  (match inputTypes with 
+		 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Plus must have exactly have two input types")))
+	| Minus -> 
+	 (match inputTypes with 
+	   | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Minus must have exactly have two input types")))
+	| Times -> 
+	  (match inputTypes with  
+	 	 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Times must have exactly have two input types")))
+	| Divide -> 
+  	(match inputTypes with 
+		 |[inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Divide must have exactly have two input types")))
+	| Mod -> 
+    (match inputTypes with 
+		 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Mod must have exactly have two input types")))
+	| Raise -> 	
+		(match inputTypes with 
+		 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Raise must have exactly have two input types")))
 	| LessThan -> BooleanType
 	| LessThanOrEqual -> BooleanType
 	| GreaterThan -> BooleanType
 	| GreaterThanOrEqual -> BooleanType
 	| Equal -> BooleanType
 
+let getOperatorCallClass inputTypeList = function
+	| Not -> "Booleans"
+	| And -> "Booleans"
+	| Or -> "Booleans"
+	| Negation -> 
+		(match inputTypeList with
+		 | [NumberType(groupName)] -> groupName
+		 | _ -> raise(operatorException Negation inputTypeList)) 
+  | Plus -> 
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Plus inputTypeList)) 
+	| Minus -> 
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Minus inputTypeList)) 
+	| Times -> 
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Times inputTypeList)) 
+	| Divide ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Divide inputTypeList)) 
+	| Mod ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Mod inputTypeList)) 
+	| Raise ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Raise inputTypeList)) 
+	| LessThan -> 
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException LessThan inputTypeList)) 
+	| LessThanOrEqual ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException LessThanOrEqual inputTypeList)) 
+	| GreaterThan ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException GreaterThan inputTypeList)) 
+	| GreaterThanOrEqual ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException GreaterThanOrEqual inputTypeList)) 
+	| Equal ->
+		(match inputTypeList with
+		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Equal inputTypeList)) 
+
 let rec checkExpression environment = function
-	  Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
-	| Number(numberValue) -> TypedNumber(numberValue, IntegerType)
+	| Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
+	| Number(numberValue) -> TypedNumber(numberValue, NumberType("Integers"))
   | Identifier(variableName) -> 
 		  let variableDeclaration = 
 				try findVariable environment.scope variableName 
-			  with Not_found -> raise (undefinedException variableName)
+			  with Not_found -> raise (undefinedVariableException variableName)
 		  in  let (_, variableType) = variableDeclaration
 			    in TypedIdentifier(variableName, variableType)
 	| Unop(unaryOperator, unopExpression) ->
 		(let unaryExpression =  checkExpression environment unopExpression
-		in match getOperatorTypes unaryOperator with
-		       [operatorType] -> 
-						let expressionType = (getExpressionType unaryExpression)
-			      in if canCast expressionType operatorType
-			         then TypedUnop(unaryOperator, getOperatorReturnType unaryOperator, unaryExpression)
-					     else raise(castException expressionType operatorType)
-			   | _ -> raise(PlatoError("Unop must have exactly have one input type")))
+		 in let expressionTypeList = [getExpressionType unaryExpression]
+		    in if canApplyOperator expressionTypeList unaryOperator
+			     then TypedUnop(unaryOperator, getOperatorReturnType expressionTypeList unaryOperator, unaryExpression)
+			     else raise(operatorException unaryOperator expressionTypeList))
 	| Binop(binaryOperator, binaryExpression1, binaryExpression2) ->
 		(let binaryExpression1 = checkExpression environment binaryExpression1
-		and binaryExpression2 = checkExpression environment binaryExpression2
-		in match getOperatorTypes binaryOperator with
-		       [operatorType1; operatorType2] -> 
-						let expressionType1, expressionType2 = (getExpressionType binaryExpression1), (getExpressionType binaryExpression2)
-			      in if canCast expressionType1 operatorType1
-			         then if canCast expressionType2 operatorType2
-					          then TypedBinop(binaryOperator, getOperatorReturnType binaryOperator, binaryExpression1, binaryExpression2)
-							      else raise(castException expressionType2 operatorType1)
-					     else raise(castException expressionType1 operatorType2)
-		     | _ -> raise(PlatoError("Binop must have exactly have two input types")))
+		 and binaryExpression2 = checkExpression environment binaryExpression2
+     in let expressionTypeList = [getExpressionType binaryExpression2; getExpressionType binaryExpression2]
+		    in if canApplyOperator expressionTypeList binaryOperator
+			     then TypedBinop(binaryOperator, getOperatorReturnType expressionTypeList binaryOperator, binaryExpression1, binaryExpression2)
+			     else raise(operatorException binaryOperator expressionTypeList))
 
 let rec checkStatement environment = function
-	  Print(expression) -> TypedPrint(checkExpression environment expression)
+	| Print(expression) -> TypedPrint(checkExpression environment expression)
   | Assignment(variableName, newValue) -> 
 		let variableIdentifier = Identifier(variableName) 
 		in let variableDetails = checkExpression environment variableIdentifier
@@ -146,19 +282,17 @@ let checkProgram = function
 
 (* Convert Sast to Java Ast *)
 let createJavaType = function
-	  BooleanType -> Bool
-  | IntegerType -> Int
-	| NumberType(_) -> Int
+	| BooleanType -> JavaBooleanType
+	| NumberType(_) -> JavaIntType
 
 let rec createJavaExpression = function
-	(* TODO need to generate casts here *)
 	  TypedBoolean(booleanValue, _) -> JavaBoolean(booleanValue)
 	| TypedNumber(numberValue, _)-> JavaInt(numberValue)
   | TypedIdentifier(variableName, _) -> JavaVariable(variableName)
 	| TypedUnop(unaryOperator, operatorType, unopExpression) ->
-		JavaCall(typeToString operatorType, operatorToString unaryOperator, [createJavaExpression unopExpression])
+		JavaCall(getOperatorCallClass [getExpressionType unopExpression] unaryOperator, operatorToString unaryOperator, [createJavaExpression unopExpression])
 	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->
-		JavaCall(typeToString operatorType, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
+		JavaCall(getOperatorCallClass [getExpressionType binaryExpression1; getExpressionType binaryExpression2] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
 
 let createJavaStatement = function
 	  TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
@@ -176,8 +310,8 @@ let createJavaAst = function
 		
 (* Generate code from Java Ast *)		
 let generateJavaType logToJavaFile = function
-	  Bool -> logToJavaFile "boolean "
-	| Int -> logToJavaFile "int "
+	| JavaBooleanType -> logToJavaFile "boolean "
+	| JavaIntType -> logToJavaFile "int "
 
 let rec generateJavaExpression logToJavaFile = function
 	  JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
@@ -230,11 +364,11 @@ let generatePlatoCommonClass =
 	in logToCommonClassFile commonClassString 			
 			
 let generatePlatoBooleanClass = 
-	let logToBooleanClassFile = logToFileOverwrite false "PlatoBoolean.java"
+	let logToBooleanClassFile = logToFileOverwrite false "Booleans.java"
 	in logToBooleanClassFile booleanClassString
 	
 let generatePlatoIntegerClass = 
-	let logToIntegerClassFile = logToFileOverwrite false "PlatoIntegers.java"
+	let logToIntegerClassFile = logToFileOverwrite false "Integers.java"
 	in logToIntegerClassFile integerClassString
 		
 let generatePlatoClasses = 
