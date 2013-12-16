@@ -26,6 +26,8 @@ rule token = parse
   | ';' { SEMICOLON }
 	| '{' { OPEN_BRACE }
 	| '}' { CLOSE_BRACE }
+	| '[' { OPEN_BRACKET }
+	| ']' { CLOSE_BRACKET }
 	| '0' { NUMBER(0) }
   | ['1'-'9']['0'-'9']* as number { NUMBER(int_of_string number) }
 	| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* as identifier { IDENTIFIER(identifier) }
