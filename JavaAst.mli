@@ -18,8 +18,12 @@ type javaStatement =
 type javaBlock =
 	  JavaBlock of javaStatement list
 
+(* type javaFunctionHeader = 
+	  JavaFunctionHeader of javaFunctionType * string*)
+
 type javaMethod	=
 	  JavaMain of javaBlock
+	  | JavaFunction of Ast.functionHeader * javaBlock
 				
 type javaClass = 
 	  JavaClass of string * javaMethod list

@@ -13,6 +13,7 @@ type typedExpression =
 
 type typedStatement = 
 	| TypedPrint of typedExpression
+	(*| TypedReturn of typedExpression*)
 	| TypedAssignment of variableDeclaration * typedExpression      
 	| TypedDeclaration of variableDeclaration * typedExpression
 
@@ -28,5 +29,9 @@ type typedFunctionBlock =
 type typedMainBlock = 
 	  TypedMainBlock of typedStatementBlock
 		
+(* TODO Make definition of typedProgram into:
+type typedProgram = 
+	  TypedProgram of typedMainBlock * typedFunctionBlock list
+	  *)
 type typedProgram = 
 	  TypedProgram of typedMainBlock * typedFunctionBlock list

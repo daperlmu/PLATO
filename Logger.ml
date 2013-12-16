@@ -54,6 +54,7 @@ let rec logExpressionAst = function
 
 let logStatementAst = function
 	  Print(printValue) -> logStringToAst "Print"; logExpressionAst(printValue)
+	(*| Return(expression) -> logExpressionAst(expression)*)
 	| Assignment(identifier, rhs) -> logStringToAst "Assignment"; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 	| Declaration(platoType, identifier, rhs) -> logStringToAst "Declaration"; logPlatoTypeAst platoType; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 		
@@ -64,7 +65,7 @@ let logMainBlockAst = function
 	  MainBlock(statementBlock) -> logStringToAst "MainBlock"; logStatementBlockAst statementBlock
 
 let logProgramAst = function
-	  Program(mainBlock) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
+	  Program(mainBlock, functionBlockList) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
 		
 (* Logging for PLATO SAST *)
 
@@ -112,6 +113,9 @@ let logStatementSast = function
 	  TypedPrint(printExpression) -> 
 			logStringToSast "Print"; 
 			logExpressionSast(printExpression)
+	(*| TypedReturn(returnExpression) ->
+			logStringToSast "Return";
+			logExpressionSast(returnExpression)*)
 	| TypedAssignment((variableName, variableType), newValue) -> 
 		logListToSast ["Assign"; variableName; "of type"]; 
 		logPlatoTypeAst variableType;
@@ -130,7 +134,7 @@ let logMainBlockSast = function
 	  TypedMainBlock(statementBlock) -> logStringToSast "MainBlock"; logStatementBlockSast statementBlock
 	
 let logProgramSast = function
-    TypedProgram(mainBlock) -> logListToSast ["Program of size"; "1"]; logMainBlockSast mainBlock
+    TypedProgram(mainBlock, typedFunctionBlockList) -> logListToSast ["Program of size"; "1"]; logMainBlockSast mainBlock
 		
 (* Logging for Java AST *)
 let logListToJavaAst logStringList = 
@@ -161,6 +165,7 @@ let logJavaBlockAst = function
 
 let logJavaMethodAst = function
 	  JavaMain(methodBlock) -> logStringToJavaAst "Java main"; logJavaBlockAst methodBlock
+	  | JavaFunction(_, _) -> ()
 
 let logJavaClassAst = function
 	  JavaClass(className, javaMethodList) -> logListToJavaAst ["Java class"; className; "with "; string_of_int (List.length javaMethodList); "methods"]; 

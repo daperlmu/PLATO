@@ -280,10 +280,13 @@ let checkStatementBlock environment = function
 	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement environment) statementList) 
 
 let checkMainBlock = function
-	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock, checkFunction)
+	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock)
+
+let checkFunctionBlock = function
+	  FunctionDeclaration(functionHeader, statementBlock) -> TypedFunctionBlock(functionHeader, checkStatementBlock emptyEnviroment statementBlock)
 
 let checkProgram = function
-	  Program(mainBlock, functionBlockList) -> TypedProgram(checkMainBlock mainBlock, checkBodyBlockList functionBlockList)	 
+	  Program(mainBlock, functionBlockList) -> TypedProgram(checkMainBlock mainBlock, List.map checkFunctionBlock functionBlockList)	 
 
 (* Convert Sast to Java Ast *)
 let createJavaType = function
@@ -306,14 +309,18 @@ let createJavaStatement = function
 	| TypedAssignment((variableName, variableType), newValue) -> JavaStatement(JavaAssignment(variableName, createJavaExpression newValue))
 	| TypedDeclaration((variableName, variableType), newValue) -> JavaStatement(JavaDeclaration(createJavaType variableType, variableName, Some(createJavaExpression newValue)))
 
+let createJavaFunction = function
+	  TypedFunctionBlock(functionHeader, TypedStatementBlock(typedStatementList)) -> 
+	  		JavaFunction(functionHeader, JavaBlock(List.map createJavaStatement typedStatementList))
+
 let createJavaMain = function
 	  TypedStatementBlock(statementList) -> JavaMain(JavaBlock(List.map createJavaStatement statementList))
 
-let createJavaClass = function 
-	  TypedMainBlock(typedStatementList) -> [JavaClass("Main", [createJavaMain typedStatementList])]
+let createJavaClass typedFunctionBlockList = function 
+	  TypedMainBlock(typedStatementList) -> [JavaClass("Main", (createJavaMain typedStatementList)::(List.map createJavaFunction typedFunctionBlockList))]
 
 let createJavaAst = function
-	  TypedProgram(typedMainBlock) -> JavaClassList(createJavaClass typedMainBlock)
+	  TypedProgram(typedMainBlock, typedFunctionBlockList) -> JavaClassList(createJavaClass typedFunctionBlockList typedMainBlock)
 		
 (* Generate code from Java Ast *)		
 let generateJavaType logToJavaFile = function
@@ -346,16 +353,36 @@ let generateJavaStatement logToJavaFile = function
 	  JavaStatement(javaExpression) ->
 			generateJavaExpression logToJavaFile javaExpression;
 			logToJavaFile ";\n"
-		
+
 let generateJavaBlock logToJavaFile = function
 	  JavaBlock(javaStatementList) ->
 			logToJavaFile "{\n"; 
 			ignore (List.map (generateJavaStatement logToJavaFile) javaStatementList);
 			logToJavaFile "}\n"
 
+let generateJavaFunctionParameter logToJavaFile = function
+	  Parameter(paramType, paramName) ->
+			generateJavaType logToJavaFile (createJavaType paramType);
+			logToJavaFile paramName
+
 let generateJavaMethod logToJavaFile = function
 	  JavaMain(javaBlock) -> 
 			logToJavaFile "public static void main(String[] args) "; 
+			generateJavaBlock logToJavaFile javaBlock
+	  | JavaFunction(functionHeader, javaBlock) ->
+	  		logToJavaFile "public static ";
+	  		(match functionHeader.returnType with
+				VoidType -> ignore (logToJavaFile "void ")
+				| OtherType(returnType) -> ignore (generateJavaType logToJavaFile (createJavaType returnType));
+				);
+	  		logToJavaFile functionHeader.functionName;
+	  		logToJavaFile "(";
+	  		(match functionHeader.parameters with
+				[] -> ()
+				| [first] -> ignore (generateJavaFunctionParameter logToJavaFile first)
+				| first::rest -> ignore (generateJavaFunctionParameter logToJavaFile first);
+				   ignore (List.map (fun elem -> logToJavaFile ","; generateJavaFunctionParameter logToJavaFile elem) rest));
+	  		logToJavaFile ") ";
 			generateJavaBlock logToJavaFile javaBlock
 
 let generateJavaClass fileName = function

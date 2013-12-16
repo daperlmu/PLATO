@@ -31,12 +31,13 @@ platoType:
 	| NUMBER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
 
-platoVoidType:
-	VOID_TYPE { VoidType }
+platoFunctionType:
+	| VOID_TYPE { VoidType }
+	| BOOLEAN_TYPE { OtherType(BooleanType) }
+	| INTEGER_TYPE  { OtherType(NumberType("Integers")) }
+	| NUMBER_TYPE  { OtherType(NumberType("Integers")) }
+	| NUMBER_TYPE OVER IDENTIFIER { OtherType(NumberType($3)) }
 
-expressionList:
-	expression
-	| expression*
 /*
 restOfCommaSeparatedExpressionList
 	*//* nothing *//* { [] }
@@ -74,7 +75,7 @@ expression:
 	
 statement:
     PRINT expression SEMICOLON { Print($2) }
-    | RETURN expression SEMICOLON
+    /*| RETURN expression SEMICOLON { Return($2) }*/
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
 	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
 
@@ -88,9 +89,14 @@ statementBlock:
 parameter:
 	platoType IDENTIFIER { Parameter($1, $2) }
 
+parameterWithComma:
+    parameter COMMA parameter { [$3; $1]}
+	| parameterWithComma COMMA parameter { $3::$1 }
+
 parameterList:
 	{ [] }
-	| parameterList parameter { $2::$1 }
+	| parameter { [$1] }
+	| parameterWithComma { $1 }
 
 functionHeader:
 	platoFunctionType IDENTIFIER LPAREN parameterList RPAREN { { returnType = $1;
@@ -99,7 +105,6 @@ functionHeader:
 	| IDENTIFIER LPAREN parameterList RPAREN { { returnType = VoidType;
 												 functionName = $1;
 												 parameters = List.rev $3 } }											 
-
 
 functionBlock:
 	functionHeader statementBlock { FunctionDeclaration($1, $2) }
@@ -111,5 +116,10 @@ bodyBlockList:
   { [] }
   | bodyBlockList functionBlock { $2::$1 }
 
+/*
+TODO: Replace current definition of program with:
+program:
+    mainBlock bodyBlockList { Program($1, List.rev $2) }
+    */
 program:
     mainBlock bodyBlockList { Program($1, List.rev $2) }

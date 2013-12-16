@@ -21,8 +21,7 @@ type platoType =
 
 type platoFunctionType =
 	| VoidType
-	| BooleanType
-	| NumberType of string
+	| OtherType of platoType
 
 type expression = 
 	| Boolean of bool
@@ -34,6 +33,7 @@ type expression =
 
 type  statement =
 	| Print of expression
+	(*| Return of expression*)
   | Assignment of string * expression
 	| Declaration of platoType * string * expression	
 				
@@ -53,6 +53,10 @@ type functionBlock =
 
 type mainBlock = 
 	  MainBlock of statementBlock
-		
+
+(* TODO Make definition of Program into:
+type program  =
+	  Program of mainBlock * functionBlock list
+*)
 type program  =
 	  Program of mainBlock * functionBlock list
