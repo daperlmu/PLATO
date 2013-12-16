@@ -51,6 +51,14 @@ setLiteral:
 	OPEN_BRACE commaSeparatedExpressionList CLOSE_BRACE {$2}
 */
 
+commaSeparatedExpressionNonemptyList:
+	expression {[$1]}
+	| commaSeparatedExpressionNonemptyList COMMA expression {$3::$1}
+
+commaSeparatedExpressionList:
+	/*nothing*/ {[]}
+	| commaSeparatedExpressionNonemptyList {$1}
+
 expression:
     BOOLEAN { Boolean($1) }
 	|	NUMBER { Number($1) }
@@ -71,7 +79,8 @@ expression:
 	| expression GREATER_THAN EQUAL expression %prec GREATER_THAN_OR_EQUAL { Binop(GreaterThanOrEqual, $1, $4) }
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
 	| LPAREN expression RPAREN { $2 }
-	| OPEN_BRACE expression CLOSE_BRACE {SetLiteral($2)}
+	/*| OPEN_BRACE expression COMMA expression COMMA expression COMMA expression CLOSE_BRACE {SetLiteral([$2; $4; $6; $8])}*/
+	| OPEN_BRACE commaSeparatedExpressionList CLOSE_BRACE {SetLiteral(List.rev $2)}
 	
 statement:
     PRINT expression SEMICOLON { Print($2) }
