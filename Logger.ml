@@ -65,7 +65,8 @@ let logMainBlockAst = function
 	  MainBlock(statementBlock) -> logStringToAst "MainBlock"; logStatementBlockAst statementBlock
 
 let logProgramAst = function
-	  Program(mainBlock, functionBlockList) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
+	  (* TODO log functions and groups *)
+	  Program(mainBlock, functionBlockList, groupBlockList) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
 		
 (* Logging for PLATO SAST *)
 
@@ -134,7 +135,8 @@ let logMainBlockSast = function
 	  TypedMainBlock(statementBlock) -> logStringToSast "MainBlock"; logStatementBlockSast statementBlock
 	
 let logProgramSast = function
-    TypedProgram(mainBlock, typedFunctionBlockList) -> logListToSast ["Program of size"; "1"]; logMainBlockSast mainBlock
+	  (* TODO log functions and groups *)
+    TypedProgram(mainBlock, typedFunctionBlockList, typedGroupBlockList) -> logListToSast ["Program of size"; "1"]; logMainBlockSast mainBlock
 		
 (* Logging for Java AST *)
 let logListToJavaAst logStringList = 

@@ -14,6 +14,8 @@ rule token = parse
 	| "OVER" { OVER }
 	| "PRINT" { PRINT }
 	| "RETURN" { RETURN }
+	| "GROUP" { GROUP }
+	| "add" { ADD }
 	| "main()" { MAIN_HEADER }
 	| '+' { PLUS }
 	| '-' { MINUS }

@@ -4,7 +4,7 @@
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
 %token PLUS MINUS TIMES DIVIDE PERCENT CARET AND OR 
-%token OVER PRINT RETURN
+%token OVER PRINT RETURN GROUP ADD
 %token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET
 %token <bool> BOOLEAN
 %token <int> NUMBER
@@ -33,10 +33,7 @@ platoType:
 
 platoFunctionType:
 	| VOID_TYPE { VoidType }
-	| BOOLEAN_TYPE { OtherType(BooleanType) }
-	| INTEGER_TYPE  { OtherType(NumberType("Integers")) }
-	| NUMBER_TYPE  { OtherType(NumberType("Integers")) }
-	| NUMBER_TYPE OVER IDENTIFIER { OtherType(NumberType($3)) }
+  | platoType { OtherType($1) }
 
 /*
 restOfCommaSeparatedExpressionList
@@ -51,16 +48,8 @@ setLiteral:
 	OPEN_BRACE commaSeparatedExpressionList CLOSE_BRACE {$2}
 */
 
-commaSeparatedExpressionNonemptyList:
-	expression {[$1]}
-	| commaSeparatedExpressionNonemptyList COMMA expression {$3::$1}
-
-commaSeparatedExpressionList:
-	/*nothing*/ {[]}
-	| commaSeparatedExpressionNonemptyList {$1}
-
 expression:
-    BOOLEAN { Boolean($1) }
+  | BOOLEAN { Boolean($1) }
 	|	NUMBER { Number($1) }
 	| IDENTIFIER { Identifier($1) }
 	| NOT expression { Unop(Not, $2) }
@@ -81,15 +70,23 @@ expression:
 	| LPAREN expression RPAREN { $2 }
 	/*| OPEN_BRACE expression COMMA expression COMMA expression COMMA expression CLOSE_BRACE {SetLiteral([$2; $4; $6; $8])}*/
 	| OPEN_BRACE commaSeparatedExpressionList CLOSE_BRACE {SetLiteral(List.rev $2)}
+
+commaSeparatedExpressionNonemptyList:
+	| expression { [$1] }
+	| commaSeparatedExpressionNonemptyList COMMA expression { $3::$1 }
+
+commaSeparatedExpressionList:
+	| /*nothing*/ { [] }
+	| commaSeparatedExpressionNonemptyList { $1 }
 	
 statement:
-    PRINT expression SEMICOLON { Print($2) }
+  | PRINT expression SEMICOLON { Print($2) }
     /*| RETURN expression SEMICOLON { Return($2) }*/
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
 	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
 
 statementList:
-    /* empty */ { [] }
+  |/* empty */ { [] }
   | statementList statement { $2::$1 }
 	
 statementBlock: 
@@ -99,16 +96,22 @@ parameter:
 	platoType IDENTIFIER { Parameter($1, $2) }
 
 parameterWithComma:
-    parameter COMMA parameter { [$3; $1]}
+  | parameter COMMA parameter { [$3; $1]}
 	| parameterWithComma COMMA parameter { $3::$1 }
 
 parameterList:
-	{ [] }
+	| { [] }
 	| parameter { [$1] }
 	| parameterWithComma { $1 }
 
+addFunctionHeader:  INTEGER_TYPE ADD LPAREN INTEGER_TYPE IDENTIFIER COMMA INTEGER_TYPE IDENTIFIER RPAREN { { returnType = OtherType(NumberType("Integers"));
+														 functionName = "add";
+														 parameters = [Parameter(NumberType("Integers"), $5); Parameter(NumberType("Integers"), $8)]  } }
+														
+addFunctionBlock: addFunctionHeader statementBlock { FunctionDeclaration($1, $2) }
+
 functionHeader:
-	platoFunctionType IDENTIFIER LPAREN parameterList RPAREN { { returnType = $1;
+  | platoFunctionType IDENTIFIER LPAREN parameterList RPAREN { { returnType = $1;
 														 functionName = $2;
 														 parameters = List.rev $4 } }
 	| IDENTIFIER LPAREN parameterList RPAREN { { returnType = VoidType;
@@ -116,19 +119,28 @@ functionHeader:
 												 parameters = List.rev $3 } }											 
 
 functionBlock:
-	functionHeader statementBlock { FunctionDeclaration($1, $2) }
+	  functionHeader statementBlock { FunctionDeclaration($1, $2) }
+
+functionBlockList:
+  | { [] }
+  | functionBlockList functionBlock { $2::$1 }
 
 mainBlock:
     MAIN_HEADER statementBlock { MainBlock($2) }
 
-bodyBlockList:
-  { [] }
-  | bodyBlockList functionBlock { $2::$1 }
+groupHeader:
+    GROUP IDENTIFIER { GroupHeader($2) }
+		
+groupBody:
+  /* TODO this needs a real set, make sure to update $4 when fixing this */
+     OPEN_BRACE CLOSE_BRACE SEMICOLON addFunctionBlock { GroupBody([0; 1], $4) }
 
-/*
-TODO: Replace current definition of program with:
+groupBlock: 
+    groupHeader groupBody { GroupDeclaration($1, $2) } 
+		
+groupBlockList:
+  | { [] }
+  | groupBlockList groupBlock { $2::$1 }
+
 program:
-    mainBlock bodyBlockList { Program($1, List.rev $2) }
-    */
-program:
-    mainBlock bodyBlockList { Program($1, List.rev $2) }
+    mainBlock functionBlockList groupBlockList { Program($1, List.rev $2, List.rev $3) }

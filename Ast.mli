@@ -49,14 +49,20 @@ type functionHeader = {
   }
 
 type functionBlock = 
-	  FunctionDeclaration of functionHeader * statementBlock
+	 FunctionDeclaration of functionHeader * statementBlock
 
 type mainBlock = 
 	  MainBlock of statementBlock
+		
+(* TODO should be int set not int list *)	
+type groupHeader = 
+	  GroupHeader of string			
+		
+type groupBody =
+	  GroupBody of int list * functionBlock			
+																		
+type groupBlock =
+    GroupDeclaration of groupHeader * groupBody
 
-(* TODO Make definition of Program into:
 type program  =
-	  Program of mainBlock * functionBlock list
-*)
-type program  =
-	  Program of mainBlock * functionBlock list
+	  Program of mainBlock * functionBlock list * groupBlock list

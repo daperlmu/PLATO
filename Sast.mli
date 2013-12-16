@@ -24,14 +24,13 @@ type typedParameter =
 	  TypedParameter of variableDeclaration
 	  
 type typedFunctionBlock =
-	  TypedFunctionBlock of Ast.functionHeader * typedStatementBlock
+	  TypedFunctionDeclaration of Ast.functionHeader * typedStatementBlock
 
 type typedMainBlock = 
-	  TypedMainBlock of typedStatementBlock
-		
-(* TODO Make definition of typedProgram into:
+	  TypedMainBlock of typedStatementBlock	
+																		
+type typedGroupBlock =
+    TypedGroupDeclaration of string * int list list * int list
+
 type typedProgram = 
-	  TypedProgram of typedMainBlock * typedFunctionBlock list
-	  *)
-type typedProgram = 
-	  TypedProgram of typedMainBlock * typedFunctionBlock list
+	  TypedProgram of typedMainBlock * typedFunctionBlock list * typedGroupBlock list

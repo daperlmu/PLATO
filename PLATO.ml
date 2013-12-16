@@ -16,6 +16,47 @@ let castException expressionType  variableType =
 let operatorException operator inputTypeList = 
 	PlatoError("Cannot apply " ^ (operatorToString operator) ^ " to type " ^ (String.concat ", " (List.map typeToString inputTypeList)))
 
+let identityException groupName =
+	PlatoError("Error while generating group" ^ groupName ^ ".  Could not find identity element")
+		
+let inverseException groupName element=
+	PlatoError("Error while generating group" ^ groupName ^ ".  Could not find inverse of " ^ (string_of_int element))
+
+(* Intepreter for simple statements *)
+let evaluateSimpleUnop unopValue = function
+	| Negation -> -unopValue
+	| _ -> raise(PlatoError("Invalid simple unop"))
+
+let evaluateSimpleBinop binopValue1 binopValue2 = function
+  | Plus -> binopValue1 + binopValue2
+	| Minus -> binopValue1 - binopValue2
+	| Times -> binopValue1 * binopValue2
+	| Divide -> binopValue1 / binopValue2
+	| Mod -> binopValue1 mod binopValue2
+	| Raise -> int_of_float ((float_of_int binopValue1) ** (float_of_int binopValue2))
+	| _ -> raise(PlatoError("Invalid simple binop"))
+
+let rec evaluateSimpleExpression identifierName1 identifierName2 input1 input2 = function
+	| Number(numberValue) -> numberValue
+	| Identifier(variableName) ->
+		(match variableName with
+	   | identifierName1 -> input1
+		 | identifierName2 -> input2
+		 | _ -> raise(undefinedVariableException variableName))	
+	| Unop(unaryOperator, unopExpression) -> evaluateSimpleUnop (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 unopExpression) unaryOperator
+	| Binop(binaryOperator, binopExpression1, binopExpression2) -> evaluateSimpleBinop (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 binopExpression1) (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 binopExpression2) binaryOperator
+	| _ -> raise(PlatoError("Expressions in group add or multiply can only contain basic arithmetic operators"))
+
+(* TODO *)
+let evaluateSimpleStatement identifierName1 identifierName2 input1 input2 = function
+	| _ -> 0
+	| _ -> raise(PlatoError("Statements in group add or multiply can only be returns"))
+
+let evaluateSimpleBinaryFunction input1 input2 = function
+	| FunctionDeclaration({ returnType = OtherType(NumberType("Integers")); functionName = binaryFunctionName; parameters = [Parameter(NumberType("Integers"), identifierName1); Parameter(NumberType("Integers"), identifierName2)]}, functionBody) -> 
+		evaluateSimpleStatement identifierName1 identifierName2 input1 input2 functionBody
+	| _ -> raise(PlatoError("Functions in groups can only be add or multiply"))
+
 (* Convert Ast to Sast *)
 let canCast fromType toType = 
   if fromType = toType
@@ -283,10 +324,59 @@ let checkMainBlock = function
 	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock)
 
 let checkFunctionBlock = function
-	  FunctionDeclaration(functionHeader, statementBlock) -> TypedFunctionBlock(functionHeader, checkStatementBlock emptyEnviroment statementBlock)
+	  FunctionDeclaration(functionHeader, statementBlock) -> TypedFunctionDeclaration(functionHeader, checkStatementBlock emptyEnviroment statementBlock)
+
+let rec generateTableHelper rowElements columnElements tableFunction tableSoFar =
+	match rowElements with
+	| [] -> List.rev tableSoFar
+	| head::tail -> 
+		let paritalTableFunction = (fun input2 -> evaluateSimpleBinaryFunction head input2 tableFunction)
+		in generateTableHelper tail columnElements tableFunction ((List.map paritalTableFunction columnElements)::tableSoFar)
+
+let generateTable tableElements tableFunction = generateTableHelper tableElements tableElements tableFunction [ [] ]
+
+let rec getGroupIdentityHelper groupName groupElements groupTable currentIndex = 
+	match groupTable with
+	| [] -> raise(identityException groupName)
+	| head::tail ->
+		if head = groupElements
+		then List.nth groupElements currentIndex
+		else getGroupIdentityHelper groupName groupElements tail (currentIndex + 1)
+		
+let getGroupIdentity groupName groupElements groupTable = getGroupIdentityHelper groupName groupElements groupTable 0
+
+let rec findInverseIndexHelper groupName element groupIdentity currentIndex = function
+	| [] -> raise(inverseException groupName element)
+	| head::tail ->
+		if head = groupIdentity
+		then currentIndex
+		else findInverseIndexHelper groupName element groupIdentity (currentIndex + 1) tail
+
+let findInverseIndex groupName element groupIdentity additionResults = findInverseIndexHelper groupName element groupIdentity 0 additionResults
+
+let rec generateInverseTableHelper groupName groupElements groupIdentity groupTable tableSoFar =
+	match groupElements with 
+	| [] -> List.rev tableSoFar
+	| head::tail -> 
+		let headInverse = List.nth groupElements (findInverseIndex groupName head groupIdentity (List.hd groupTable))
+		in generateInverseTableHelper groupName tail groupIdentity (List.tl groupTable) (headInverse :: tableSoFar)
+
+let generateInverseTable groupName groupElements groupTable = generateInverseTableHelper groupName groupElements (getGroupIdentity groupName groupElements groupTable) groupTable []
+
+(* TODO actually check for associativity using Light's associtivity test *)
+let isAssociative groupTable = true
+
+let checkGroupBlock = function
+    GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) ->  
+			let additionTable = generateTable groupElements groupAdditionFunction
+		  in let additiveInverseTable = generateInverseTable groupName groupElements additionTable
+				 in if isAssociative additionTable
+			      then TypedGroupDeclaration(groupName, additionTable, additiveInverseTable)
+				    else raise(PlatoError("Group addition must be associative"))
+			   
 
 let checkProgram = function
-	  Program(mainBlock, functionBlockList) -> TypedProgram(checkMainBlock mainBlock, List.map checkFunctionBlock functionBlockList)	 
+	  Program(mainBlock, functionBlockList, groupBlockList) -> TypedProgram(checkMainBlock mainBlock, List.map checkFunctionBlock functionBlockList, List.map checkGroupBlock groupBlockList)	 
 
 (* Convert Sast to Java Ast *)
 let createJavaType = function
@@ -294,7 +384,7 @@ let createJavaType = function
 	| NumberType(_) -> JavaIntType
 
 let rec createJavaExpression = function
-	  TypedBoolean(booleanValue, _) -> JavaBoolean(booleanValue)
+	| TypedBoolean(booleanValue, _) -> JavaBoolean(booleanValue)
 	| TypedNumber(numberValue, _)-> JavaInt(numberValue)
   | TypedIdentifier(variableName, _) -> JavaVariable(variableName)
 	| TypedUnop(unaryOperator, operatorType, unopExpression) ->
@@ -305,22 +395,23 @@ let rec createJavaExpression = function
 		JavaCall("SetLiterals", "newHashSet", List.map createJavaExpression setExpressionList)
 
 let createJavaStatement = function
-	  TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
+	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
 	| TypedAssignment((variableName, variableType), newValue) -> JavaStatement(JavaAssignment(variableName, createJavaExpression newValue))
 	| TypedDeclaration((variableName, variableType), newValue) -> JavaStatement(JavaDeclaration(createJavaType variableType, variableName, Some(createJavaExpression newValue)))
 
 let createJavaFunction = function
-	  TypedFunctionBlock(functionHeader, TypedStatementBlock(typedStatementList)) -> 
+	  TypedFunctionDeclaration(functionHeader, TypedStatementBlock(typedStatementList)) -> 
 	  		JavaFunction(functionHeader, JavaBlock(List.map createJavaStatement typedStatementList))
 
 let createJavaMain = function
 	  TypedStatementBlock(statementList) -> JavaMain(JavaBlock(List.map createJavaStatement statementList))
 
 let createJavaClass typedFunctionBlockList = function 
-	  TypedMainBlock(typedStatementList) -> [JavaClass("Main", (createJavaMain typedStatementList)::(List.map createJavaFunction typedFunctionBlockList))]
+	  TypedMainBlock(typedStatementList) -> JavaClass("Main", (createJavaMain typedStatementList)::(List.map createJavaFunction typedFunctionBlockList))
 
 let createJavaAst = function
-	  TypedProgram(typedMainBlock, typedFunctionBlockList) -> JavaClassList(createJavaClass typedFunctionBlockList typedMainBlock)
+	  (* TODO create the group classes here *)
+	  TypedProgram(typedMainBlock, typedFunctionBlockList, typedGroupBlockList) -> JavaClassList([createJavaClass typedFunctionBlockList typedMainBlock])
 		
 (* Generate code from Java Ast *)		
 let generateJavaType logToJavaFile = function

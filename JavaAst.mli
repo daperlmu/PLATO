@@ -22,7 +22,7 @@ type javaBlock =
 	  JavaFunctionHeader of javaFunctionType * string*)
 
 type javaMethod	=
-	  JavaMain of javaBlock
+	  | JavaMain of javaBlock
 	  | JavaFunction of Ast.functionHeader * javaBlock
 				
 type javaClass = 
