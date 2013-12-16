@@ -29,7 +29,11 @@ platoType:
   |	INTEGER_TYPE { IntegerType }
 	| NUMBER_TYPE  { NumberType("INTEGERS") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
-	
+
+expressionList:
+	expression
+	| expression*
+
 expression:
     BOOLEAN { Boolean($1) }
 	|	NUMBER { Number($1) }
@@ -49,6 +53,7 @@ expression:
 	| expression GREATER_THAN expression { Binop(GreaterThan, $1, $3) }
 	| expression GREATER_THAN EQUAL expression %prec GREATER_THAN_OR_EQUAL { Binop(GreaterThanOrEqual, $1, $4) }
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
+	| OPEN_BRACE expressionList CLOSE_BRACE { Set($2) }
 	
 statement:
     PRINT expression SEMICOLON { Print($2) }
