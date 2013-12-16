@@ -369,9 +369,9 @@ let isAssociative groupTable = true
 let checkGroupBlock = function
     GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) ->  
 			let additionTable = generateTable groupElements groupAdditionFunction
-		  in let additiveInverseTable = generateInverseTable groupName groupElements additionTable
+		  in let additiveInverseList = generateInverseTable groupName groupElements additionTable
 				 in if isAssociative additionTable
-			      then TypedGroupDeclaration(groupName, additionTable, additiveInverseTable)
+			      then TypedGroupDeclaration(groupName, groupElements, additionTable, additiveInverseList)
 				    else raise(PlatoError("Group addition must be associative"))
 			   
 
@@ -384,8 +384,8 @@ let createJavaType = function
 	| NumberType(_) -> JavaIntType
 
 let rec createJavaExpression = function
-	| TypedBoolean(booleanValue, _) -> JavaBoolean(booleanValue)
-	| TypedNumber(numberValue, _)-> JavaInt(numberValue)
+	| TypedBoolean(booleanValue, _) -> JavaConstant(JavaValue(JavaBoolean(booleanValue)))
+	| TypedNumber(numberValue, _)-> JavaConstant(JavaValue(JavaInt(numberValue)))
   | TypedIdentifier(variableName, _) -> JavaVariable(variableName)
 	| TypedUnop(unaryOperator, operatorType, unopExpression) ->
 		JavaCall(getOperatorCallClass [getExpressionType unopExpression] unaryOperator, operatorToString unaryOperator, [createJavaExpression unopExpression])
@@ -406,21 +406,62 @@ let createJavaFunction = function
 let createJavaMain = function
 	  TypedStatementBlock(statementList) -> JavaMain(JavaBlock(List.map createJavaStatement statementList))
 
-let createJavaClass typedFunctionBlockList = function 
-	  TypedMainBlock(typedStatementList) -> JavaClass("Main", (createJavaMain typedStatementList)::(List.map createJavaFunction typedFunctionBlockList))
+let createJavaMainClass typedFunctionBlockList = function 
+	| TypedMainBlock(typedStatementList) -> JavaClass("Main", "", [], (createJavaMain typedStatementList)::(List.map createJavaFunction typedFunctionBlockList))
+
+let listPairToMap keyList valueList = 
+		JavaMap(
+			List.map string_of_int keyList, 
+			List.map string_of_int valueList)
+
+let listTablePairToMap keyList valueTable = 
+	JavaMap(
+		List.concat (List.map (fun element1 -> List.map (fun element2 -> string_of_int element1 ^ "," ^ string_of_int element2) keyList) keyList),
+		List.map string_of_int (List.concat valueTable))
+
+let createJavaGroupClass = function
+	| TypedGroupDeclaration(groupName, groupElements, additionTable, additiveInverseList) -> 
+		 JavaClass(
+			groupName, 
+			"Groups", 
+			[JavaInstanceVariable(
+				"additionTable", 
+				"public static", 
+				listTablePairToMap groupElements additionTable);
+			 JavaInstanceVariable(
+				"additiveInverseList", 
+				"public static", 
+				listPairToMap groupElements additiveInverseList)],
+			[])
 
 let createJavaAst = function
 	  (* TODO create the group classes here *)
-	  TypedProgram(typedMainBlock, typedFunctionBlockList, typedGroupBlockList) -> JavaClassList([createJavaClass typedFunctionBlockList typedMainBlock])
+	  TypedProgram(typedMainBlock, typedFunctionBlockList, typedGroupBlockList) -> JavaClassList((createJavaMainClass typedFunctionBlockList typedMainBlock)::(List.map createJavaGroupClass typedGroupBlockList))
 		
 (* Generate code from Java Ast *)		
 let generateJavaType logToJavaFile = function
 	| JavaBooleanType -> logToJavaFile "boolean "
 	| JavaIntType -> logToJavaFile "int "
 
-let rec generateJavaExpression logToJavaFile = function
-	  JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
+let generateJavaPrimitive logToJavaFile = function
+	| JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
 	| JavaInt(intValue) -> logToJavaFile (string_of_int intValue)
+
+let rec generatePuts logToJavaFile keyList valueList =
+	(if List.length keyList > 0
+	then (logToJavaFile ("aMap.put(\"" ^ List.hd keyList ^ "\", \"" ^ List.hd valueList ^ "\");");
+	     generatePuts logToJavaFile (List.tl keyList) (List.tl valueList))
+	else ())
+
+let generateJavaValue logToJavaFile = function
+	| JavaValue(javaPrimitive) -> generateJavaPrimitive logToJavaFile javaPrimitive
+	| JavaMap(keyList, valueList) -> 
+		logToJavaFile "static {\n Map<String, String> aMap = new HashMap<String, String>();";
+		generatePuts logToJavaFile keyList valueList;
+		logToJavaFile "myMap = Collections.unmodifiableMap(aMap);\n }\n"
+
+let rec generateJavaExpression logToJavaFile = function
+	| JavaConstant(javaValue) -> generateJavaValue logToJavaFile javaValue
 	| JavaVariable(stringValue) -> logToJavaFile stringValue
 	| JavaAssignment(variableName, variableValue) -> 
 		logToJavaFile (variableName ^ "=");
@@ -457,11 +498,11 @@ let generateJavaFunctionParameter logToJavaFile = function
 			logToJavaFile paramName
 
 let generateJavaMethod logToJavaFile = function
-	  JavaMain(javaBlock) -> 
-			logToJavaFile "public static void main(String[] args) "; 
-			generateJavaBlock logToJavaFile javaBlock
+	  | JavaMain(javaBlock) -> 
+			(logToJavaFile "public static void main(String[] args) "; 
+			generateJavaBlock logToJavaFile javaBlock)
 	  | JavaFunction(functionHeader, javaBlock) ->
-	  		logToJavaFile "public static ";
+	  		(logToJavaFile "public static ";
 	  		(match functionHeader.returnType with
 				VoidType -> ignore (logToJavaFile "void ")
 				| OtherType(returnType) -> ignore (generateJavaType logToJavaFile (createJavaType returnType));
@@ -474,15 +515,22 @@ let generateJavaMethod logToJavaFile = function
 				| first::rest -> ignore (generateJavaFunctionParameter logToJavaFile first);
 				   ignore (List.map (fun elem -> logToJavaFile ","; generateJavaFunctionParameter logToJavaFile elem) rest));
 	  		logToJavaFile ") ";
-			generateJavaBlock logToJavaFile javaBlock
+			generateJavaBlock logToJavaFile javaBlock)
+
+let generateJavaInstanceVariable logToJavaFile = function
+	| JavaInstanceVariable(variableName, variableModifiers, variableValue) ->
+		generateJavaValue logToJavaFile variableValue;
+		logToJavaFile (variableModifiers ^ " " ^ variableName ^ ";")
 
 let generateJavaClass fileName = function
-	  JavaClass(javaClassName, javaMethodList) -> 
+	  JavaClass(javaClassName, javaSuperClassName, javaInstanceVariableList, javaMethodList) -> 
 			let fullClassName = String.concat "_" [javaClassName; fileName]
 			in let logToJavaFile = logToFileAppend false (String.concat "" [fullClassName; ".java"])
-				 in logToJavaFile (String.concat " " ["public class"; fullClassName; "{\n"]);  
-				    ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
-			      logToJavaFile "}\n"
+				 in let extendsString = ""
+					  in logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
+						    ignore (List.map (generateJavaInstanceVariable logToJavaFile) javaInstanceVariableList);
+				       ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
+			         logToJavaFile "}\n"
 			
 let generatePlatoCommonClass = 
 	let logToCommonClassFile = logToFileOverwrite false "PlatoCommon.java"

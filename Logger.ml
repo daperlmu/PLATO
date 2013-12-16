@@ -145,9 +145,21 @@ let logListToJavaAst logStringList =
 let logStringToJavaAst logString = 
 	logListToJavaAst [logString]
 
-let rec logJavaExpressionAst = function
+let logjavaPrimitiveAst = function
 	| JavaBoolean(booleanValue) -> logListToJavaAst ["Java boolean"; string_of_bool booleanValue]
   | JavaInt(intValue) -> logListToJavaAst ["Java int"; string_of_int intValue]
+
+let rec logJavaValueAst = function
+	(* TODO add logging for maps *)
+	| JavaValue(javaPrimitive) -> logjavaPrimitiveAst javaPrimitive
+	| JavaMap(keyList, valueList) -> 
+		logStringToJavaAst "Java map with keys ";
+		logListToJavaAst keyList;
+	  logStringToJavaAst " and values ";
+	  logListToJavaAst valueList
+		
+let rec logJavaExpressionAst = function
+	| JavaConstant(javaValue) -> logJavaValueAst javaValue
 	| JavaVariable(stringValue) -> logListToJavaAst ["Java variable"; stringValue]
 	| JavaAssignment(variableName, variableValue) -> 
 		logListToJavaAst ["Java assignment of variable"; variableName; "to"];
@@ -170,7 +182,8 @@ let logJavaMethodAst = function
 	  | JavaFunction(_, _) -> ()
 
 let logJavaClassAst = function
-	  JavaClass(className, javaMethodList) -> logListToJavaAst ["Java class"; className; "with "; string_of_int (List.length javaMethodList); "methods"]; 
+  (* TODO log instance variables here *)
+	  JavaClass(className, superClassName, javaInstanceVariableList, javaMethodList) -> logListToJavaAst ["Java class "; className; "extending"; superClassName; "with"; string_of_int (List.length javaInstanceVariableList); "and"; string_of_int (List.length javaMethodList); "methods"]; 
 		ignore (List.map logJavaMethodAst javaMethodList)
 	
 let logJavaClassListAst = function

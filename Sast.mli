@@ -30,7 +30,7 @@ type typedMainBlock =
 	  TypedMainBlock of typedStatementBlock	
 																		
 type typedGroupBlock =
-    TypedGroupDeclaration of string * int list list * int list
+    TypedGroupDeclaration of string * int list * int list list * int list
 
 type typedProgram = 
 	  TypedProgram of typedMainBlock * typedFunctionBlock list * typedGroupBlock list
