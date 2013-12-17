@@ -56,6 +56,7 @@ let rec logExpressionAst = function
 
 let logStatementAst = function
 	  Print(printValue) -> logStringToAst "Print"; logExpressionAst(printValue)
+	| Return(expression) -> logExpressionAst(expression)
 	| Assignment(identifier, rhs) -> logStringToAst "Assignment"; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 	| Declaration(platoType, identifier, rhs) -> logStringToAst "Declaration"; logPlatoTypeAst platoType; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 		
@@ -66,7 +67,8 @@ let logMainBlockAst = function
 	  MainBlock(statementBlock) -> logStringToAst "MainBlock"; logStatementBlockAst statementBlock
 
 let logProgramAst = function
-	  Program(mainBlock) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
+	  (* TODO log functions and groups *)
+	  Program(mainBlock, functionBlockList, groupBlockList) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
 		
 (* Logging for PLATO SAST *)
 
@@ -116,6 +118,9 @@ let logStatementSast = function
 	  TypedPrint(printExpression) -> 
 			logStringToSast "Print"; 
 			logExpressionSast(printExpression)
+	| TypedReturn(returnExpression) ->
+			logStringToSast "Return";
+			logExpressionSast(returnExpression)
 	| TypedAssignment((variableName, variableType), newValue) -> 
 		logListToSast ["Assign"; variableName; "of type"]; 
 		logPlatoTypeAst variableType;
@@ -134,7 +139,8 @@ let logMainBlockSast = function
 	  TypedMainBlock(statementBlock) -> logStringToSast "MainBlock"; logStatementBlockSast statementBlock
 	
 let logProgramSast = function
-    TypedProgram(mainBlock) -> logListToSast ["Program of size"; "1"]; logMainBlockSast mainBlock
+	  (* TODO log functions and groups *)
+    TypedProgram(mainBlock, typedFunctionBlockList, typedGroupBlockList) -> logListToSast ["Program of size"; "1"]; logMainBlockSast mainBlock
 		
 (* Logging for Java AST *)
 let logListToJavaAst logStringList = 
@@ -143,10 +149,25 @@ let logListToJavaAst logStringList =
 let logStringToJavaAst logString = 
 	logListToJavaAst [logString]
 
-let rec logJavaExpressionAst = function
+let logjavaPrimitiveAst = function
 	| JavaBoolean(booleanValue) -> logListToJavaAst ["Java boolean"; string_of_bool booleanValue]
   | JavaInt(intValue) -> logListToJavaAst ["Java int"; string_of_int intValue]
+
+let rec logJavaValueAst = function
+	(* TODO add logging for maps *)
+	| JavaValue(javaPrimitive) -> logjavaPrimitiveAst javaPrimitive
+	| JavaMap(keyList, valueList) -> 
+		logStringToJavaAst "Java map with keys ";
+		logListToJavaAst keyList;
+	  logStringToJavaAst " and values ";
+	  logListToJavaAst valueList
+		
+let rec logJavaExpressionAst = function
+	| JavaConstant(javaValue) -> logJavaValueAst javaValue
 	| JavaVariable(stringValue) -> logListToJavaAst ["Java variable"; stringValue]
+	| JavaReturn(expressionToReturn) ->
+		logListToJavaAst ["Return statement"];
+		logJavaExpressionAst expressionToReturn
 	| JavaAssignment(variableName, variableValue) -> 
 		logListToJavaAst ["Java assignment of variable"; variableName; "to"];
 		logJavaExpressionAst variableValue
@@ -165,9 +186,11 @@ let logJavaBlockAst = function
 
 let logJavaMethodAst = function
 	  JavaMain(methodBlock) -> logStringToJavaAst "Java main"; logJavaBlockAst methodBlock
+	  | JavaFunction(_, _) -> ()
 
 let logJavaClassAst = function
-	  JavaClass(className, javaMethodList) -> logListToJavaAst ["Java class"; className; "with "; string_of_int (List.length javaMethodList); "methods"]; 
+  (* TODO log instance variables here *)
+	  JavaClass(className, superClassName, javaInstanceVariableList, javaMethodList) -> logListToJavaAst ["Java class "; className; "extending"; superClassName; "with"; string_of_int (List.length javaInstanceVariableList); "and"; string_of_int (List.length javaMethodList); "methods"]; 
 		ignore (List.map logJavaMethodAst javaMethodList)
 	
 let logJavaClassListAst = function

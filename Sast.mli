@@ -13,14 +13,24 @@ type typedExpression =
 
 type typedStatement = 
 	| TypedPrint of typedExpression
+	| TypedReturn of typedExpression
 	| TypedAssignment of variableDeclaration * typedExpression      
 	| TypedDeclaration of variableDeclaration * typedExpression
 
 type typedStatementBlock = 
 	  TypedStatementBlock of typedStatement list
-				
+
+type typedParameter = 
+	  TypedParameter of variableDeclaration
+	  
+type typedFunctionBlock =
+	  TypedFunctionDeclaration of Ast.functionHeader * typedStatementBlock
+
 type typedMainBlock = 
-	  TypedMainBlock of typedStatementBlock
-		
+	  TypedMainBlock of typedStatementBlock	
+																		
+type typedGroupBlock =
+    TypedGroupDeclaration of string * int list * int list list * int list
+
 type typedProgram = 
-	  TypedProgram of typedMainBlock
+	  TypedProgram of typedMainBlock * typedFunctionBlock list * typedGroupBlock list

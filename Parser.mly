@@ -1,11 +1,11 @@
 %{ open Ast open Logger %}
 
-%token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE
+%token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE VOID_TYPE
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
 %token PLUS MINUS BACKSLASH TIMES DIVIDE PERCENT CARET AND OR 
-%token OVER PRINT
-%token COLON COMMA SEMICOLON OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET
+%token OVER PRINT RETURN GROUP ADD
+%token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET
 %token <bool> BOOLEAN
 %token <int> NUMBER
 %token <string> IDENTIFIER
@@ -18,6 +18,7 @@
 %left TIMES DIVIDE PERCENT
 %nonassoc NOT NEGATION
 %right CARET
+%left LPAREN RPAREN
 
 %start program
 %type <Ast.program> program
@@ -30,16 +31,20 @@ platoType:
 	| NUMBER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
 
+platoFunctionType:
+	| VOID_TYPE { VoidType }
+  | platoType { OtherType($1) }
+
 commaSeparatedExpressionNonemptyList:
-	expression {[$1]}
-	| commaSeparatedExpressionNonemptyList COMMA expression {$3::$1}
+	expression { [$1] }
+	| commaSeparatedExpressionNonemptyList COMMA expression { $3::$1 }
 
 setLiteral:
 	OPEN_BRACE CLOSE_BRACE {SetLiteral([])}
 	| OPEN_BRACE commaSeparatedExpressionNonemptyList CLOSE_BRACE {SetLiteral(List.rev $2)}
 
 expression:
-    BOOLEAN { Boolean($1) }
+  | BOOLEAN { Boolean($1) }
 	|	NUMBER { Number($1) }
 	| IDENTIFIER { Identifier($1) }
 	| NOT expression { Unop(Not, $2) }
@@ -59,21 +64,70 @@ expression:
 	| expression GREATER_THAN EQUAL expression %prec GREATER_THAN_OR_EQUAL { Binop(GreaterThanOrEqual, $1, $4) }
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
 	| setLiteral {$1}
+	| LPAREN expression RPAREN { $2 }
 
 statement:
-    PRINT expression SEMICOLON { Print($2) }
+  | PRINT expression SEMICOLON { Print($2) }
+  | RETURN expression SEMICOLON { Return($2) }
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
 	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
 
 statementList:
-    /* empty */ { [] }
+  |/* empty */ { [] }
   | statementList statement { $2::$1 }
 
 statementBlock: 
     OPEN_BRACE statementList CLOSE_BRACE { StatementBlock(List.rev $2) }
 
+parameter:
+	platoType IDENTIFIER { Parameter($1, $2) }
+
+parameterWithComma:
+  | parameter COMMA parameter { [$3; $1]}
+	| parameterWithComma COMMA parameter { $3::$1 }
+
+parameterList:
+	| { [] }
+	| parameter { [$1] }
+	| parameterWithComma { $1 }
+
+addFunctionHeader:  INTEGER_TYPE ADD LPAREN INTEGER_TYPE IDENTIFIER COMMA INTEGER_TYPE IDENTIFIER RPAREN { { returnType = OtherType(NumberType("Integers"));
+														 functionName = "add";
+														 parameters = [Parameter(NumberType("Integers"), $5); Parameter(NumberType("Integers"), $8)]  } }
+														
+addFunctionBlock: addFunctionHeader statementBlock { FunctionDeclaration($1, $2) }
+
+functionHeader:
+  | platoFunctionType IDENTIFIER LPAREN parameterList RPAREN { { returnType = $1;
+														 functionName = $2;
+														 parameters = List.rev $4 } }
+	| IDENTIFIER LPAREN parameterList RPAREN { { returnType = VoidType;
+												 functionName = $1;
+												 parameters = List.rev $3 } }											 
+
+functionBlock:
+	  functionHeader statementBlock { FunctionDeclaration($1, $2) }
+
+functionBlockList:
+  | { [] }
+  | functionBlockList functionBlock { $2::$1 }
+
 mainBlock:
     MAIN_HEADER statementBlock { MainBlock($2) }
 
+groupHeader:
+    GROUP IDENTIFIER { GroupHeader($2) }
+		
+groupBody:
+  /* TODO this needs a real set, make sure to update $4 when fixing this */
+     OPEN_BRACE CLOSE_BRACE SEMICOLON addFunctionBlock { GroupBody([0; 1], $4) }
+
+groupBlock: 
+    groupHeader groupBody { GroupDeclaration($1, $2) } 
+		
+groupBlockList:
+  | { [] }
+  | groupBlockList groupBlock { $2::$1 }
+
 program:
-    mainBlock  { Program($1) }
+    mainBlock functionBlockList groupBlockList { Program($1, List.rev $2, List.rev $3) }
