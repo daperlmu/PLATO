@@ -460,7 +460,7 @@ let createJavaAst = function
 let generateJavaType logToJavaFile = function
 	| JavaBooleanType -> logToJavaFile "boolean "
 	| JavaIntType -> logToJavaFile "int "
-	| JavaSetLiteralType -> logToJavaFile "HashSet<Object> "
+	| JavaSetLiteralType -> logToJavaFile "PlatoSet<Object> "
 
 let generateJavaPrimitive logToJavaFile = function
 	| JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
