@@ -301,7 +301,7 @@ let rec checkExpression environment = function
 
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
-	| Return(expression) -> TypedPrint(checkExpression environment expression)
+	| Return(expression) -> TypedReturn(checkExpression environment expression)
   | Assignment(variableName, newValue) -> 
 		let variableIdentifier = Identifier(variableName) 
 		in let variableDetails = checkExpression environment variableIdentifier
