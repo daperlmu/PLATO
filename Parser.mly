@@ -81,7 +81,7 @@ commaSeparatedExpressionList:
 	
 statement:
   | PRINT expression SEMICOLON { Print($2) }
-    /*| RETURN expression SEMICOLON { Return($2) }*/
+  | RETURN expression SEMICOLON { Return($2) }
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
 	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
 

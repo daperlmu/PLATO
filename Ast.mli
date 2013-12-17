@@ -33,7 +33,7 @@ type expression =
 
 type  statement =
 	| Print of expression
-	(*| Return of expression*)
+	| Return of expression
   | Assignment of string * expression
 	| Declaration of platoType * string * expression	
 				

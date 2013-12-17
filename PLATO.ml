@@ -301,6 +301,7 @@ let rec checkExpression environment = function
 
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
+	| Return(expression) -> TypedPrint(checkExpression environment expression)
   | Assignment(variableName, newValue) -> 
 		let variableIdentifier = Identifier(variableName) 
 		in let variableDetails = checkExpression environment variableIdentifier
@@ -396,6 +397,7 @@ let rec createJavaExpression = function
 
 let createJavaStatement = function
 	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
+	| TypedReturn(expression) -> JavaStatement(JavaReturn(createJavaExpression expression))
 	| TypedAssignment((variableName, variableType), newValue) -> JavaStatement(JavaAssignment(variableName, createJavaExpression newValue))
 	| TypedDeclaration((variableName, variableType), newValue) -> JavaStatement(JavaDeclaration(createJavaType variableType, variableName, Some(createJavaExpression newValue)))
 
@@ -463,6 +465,9 @@ let generateJavaValue logToJavaFile = function
 let rec generateJavaExpression logToJavaFile = function
 	| JavaConstant(javaValue) -> generateJavaValue logToJavaFile javaValue
 	| JavaVariable(stringValue) -> logToJavaFile stringValue
+	| JavaReturn(expressionToReturn) ->
+		logToJavaFile "return ";
+		generateJavaExpression logToJavaFile expressionToReturn
 	| JavaAssignment(variableName, variableValue) -> 
 		logToJavaFile (variableName ^ "=");
 		generateJavaExpression logToJavaFile variableValue

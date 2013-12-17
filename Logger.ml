@@ -54,7 +54,7 @@ let rec logExpressionAst = function
 
 let logStatementAst = function
 	  Print(printValue) -> logStringToAst "Print"; logExpressionAst(printValue)
-	(*| Return(expression) -> logExpressionAst(expression)*)
+	| Return(expression) -> logExpressionAst(expression)
 	| Assignment(identifier, rhs) -> logStringToAst "Assignment"; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 	| Declaration(platoType, identifier, rhs) -> logStringToAst "Declaration"; logPlatoTypeAst platoType; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 		
@@ -114,9 +114,9 @@ let logStatementSast = function
 	  TypedPrint(printExpression) -> 
 			logStringToSast "Print"; 
 			logExpressionSast(printExpression)
-	(*| TypedReturn(returnExpression) ->
+	| TypedReturn(returnExpression) ->
 			logStringToSast "Return";
-			logExpressionSast(returnExpression)*)
+			logExpressionSast(returnExpression)
 	| TypedAssignment((variableName, variableType), newValue) -> 
 		logListToSast ["Assign"; variableName; "of type"]; 
 		logPlatoTypeAst variableType;
@@ -161,6 +161,9 @@ let rec logJavaValueAst = function
 let rec logJavaExpressionAst = function
 	| JavaConstant(javaValue) -> logJavaValueAst javaValue
 	| JavaVariable(stringValue) -> logListToJavaAst ["Java variable"; stringValue]
+	| JavaReturn(expressionToReturn) ->
+		logListToJavaAst ["Return statement"];
+		logJavaExpressionAst expressionToReturn
 	| JavaAssignment(variableName, variableValue) -> 
 		logListToJavaAst ["Java assignment of variable"; variableName; "to"];
 		logJavaExpressionAst variableValue

@@ -15,6 +15,7 @@ type javaValue =
 type javaExpression = 
 	| JavaConstant of javaValue
   | JavaVariable of string
+  	| JavaReturn of javaExpression
 	| JavaAssignment of string * javaExpression
 	| JavaDeclaration of javaType * string * javaExpression option
 	| JavaCall of string * string * javaExpression list

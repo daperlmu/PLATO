@@ -13,7 +13,7 @@ type typedExpression =
 
 type typedStatement = 
 	| TypedPrint of typedExpression
-	(*| TypedReturn of typedExpression*)
+	| TypedReturn of typedExpression
 	| TypedAssignment of variableDeclaration * typedExpression      
 	| TypedDeclaration of variableDeclaration * typedExpression
 
