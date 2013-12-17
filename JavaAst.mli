@@ -3,6 +3,7 @@ open Sast;;
 type javaType =
 	| JavaBooleanType
 	| JavaIntType
+	| JavaSetLiteralType
 
 type javaExpression = 
 	| JavaBoolean of bool

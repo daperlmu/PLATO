@@ -19,6 +19,7 @@ let operatorToString = function
 	| GreaterThan -> "greaterThan"
 	| GreaterThanOrEqual -> "greaterThanOrEqual"
 	| Equal ->  "equal"
+	| SetDifference ->  "setDifference"
 
 let logToFile mode permissions newline fileName logString =
 	let fileHandle = open_out_gen mode permissions fileName
@@ -43,6 +44,7 @@ let logOperatorAst operator = logStringToAst (operatorToString operator)
 let rec logPlatoTypeAst = function
 	| BooleanType -> logStringToAst "BooleanType"
 	| NumberType(gropuName) -> logListToAst ["Number Type over group "; gropuName]
+	| SetLiteralType(subType) -> ignore (logListToAst ["SetLiteral Type of subtype "]); logPlatoTypeAst subType
 
 let rec logExpressionAst = function
 	| Boolean(booleanValue) -> logListToAst ["Boolean"; string_of_bool booleanValue]
@@ -71,6 +73,7 @@ let logProgramAst = function
 let typeToString = function
 	| BooleanType -> "Booleans"
 	| NumberType(groupName) -> groupName
+	| SetLiteralType(_) -> "SetLiterals"
 
 let logListToSast logStringList = 
 	(logToFileAppend true) "Sast.log" (String.concat " " logStringList)
@@ -83,6 +86,7 @@ let logOperatorSast operator = logStringToSast (operatorToString operator)
 let logPlatoTypeSast = function
 	| BooleanType -> logStringToSast "Boolean Type"
 	| NumberType(groupName) -> logListToSast ["Number Type over group"; groupName]
+	| SetLiteralType(_) -> logListToSast ["Set Literal"]
 
 let rec logExpressionSast = function
 	| TypedBoolean(booleanValue, _) -> logListToSast ["Boolean"; string_of_bool booleanValue]
