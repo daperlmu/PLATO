@@ -54,15 +54,24 @@ type functionBlock =
 type mainBlock = 
 	  MainBlock of statementBlock
 		
-(* TODO should be int set not int list *)	
 type groupHeader = 
 	  GroupHeader of string			
 		
+(* TODO should be int set not int list *)	
 type groupBody =
 	  GroupBody of int list * functionBlock			
+		
+type extendedGroupHeader = 
+	| RingHeader of string
+	| FieldHeader of string			
+		
+(* TODO should be int set not int list *)	
+type extendedGroupBody =
+	  ExtendedGroupBody of groupBody * functionBlock			
 																		
-type groupBlock =
-    GroupDeclaration of groupHeader * groupBody
+type extendedGroupBlock =
+	| GroupDeclaration of groupHeader * groupBody
+  | ExtendedGroupDeclaration of extendedGroupHeader * extendedGroupBody		
 
 type program  =
-	  Program of mainBlock * functionBlock list * groupBlock list
+	  Program of mainBlock * functionBlock list * extendedGroupBlock list

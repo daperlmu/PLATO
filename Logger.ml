@@ -20,6 +20,14 @@ let operatorToString = function
 	| GreaterThanOrEqual -> "greaterThanOrEqual"
 	| Equal ->  "equal"
 
+let typeToString = function
+	| BooleanType -> "Booleans"
+	| NumberType(groupName) -> groupName
+
+let functionTypeToString = function
+	| VoidType -> "void";
+	| OtherType(platoType) -> typeToString platoType
+
 let logToFile mode permissions newline fileName logString =
 	let fileHandle = open_out_gen mode permissions fileName
 	in (if newline
@@ -54,7 +62,7 @@ let rec logExpressionAst = function
 
 let logStatementAst = function
 	  Print(printValue) -> logStringToAst "Print"; logExpressionAst(printValue)
-	| Return(expression) -> logExpressionAst(expression)
+	| Return(expression) -> logStringToAst "Return"; logExpressionAst(expression)
 	| Assignment(identifier, rhs) -> logStringToAst "Assignment"; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 	| Declaration(platoType, identifier, rhs) -> logStringToAst "Declaration"; logPlatoTypeAst platoType; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 		
@@ -64,16 +72,57 @@ let logStatementBlockAst = function
 let logMainBlockAst = function
 	  MainBlock(statementBlock) -> logStringToAst "MainBlock"; logStatementBlockAst statementBlock
 
+(* TODO this should log a set not a list *)
+let logSetAst set = logListToAst (List.map string_of_int set) 
+
+let logParameterAst = function
+	| Parameter(parameterType, parameterName) -> logListToAst ["parameter"; parameterName; "of type"; typeToString parameterType]
+
+let logFunctionHeaderAst functionHeader = 
+	logListToAst ["Java function with name"; functionHeader.functionName; "return type"; functionTypeToString functionHeader.returnType];
+	ignore (List.map logParameterAst functionHeader.parameters)
+
+let logFunctionBlockAst = function
+	| FunctionDeclaration(functionHeader, statementBlock) ->
+		logFunctionHeaderAst functionHeader;
+		logStatementBlockAst statementBlock
+
+let logGroupHeaderAst = function
+	| GroupHeader(groupName) ->	logListToAst ["Group with name "; groupName]
+
+let logExtendedGroupHeaderAst = function
+	| RingHeader(groupName) ->	logListToAst ["Ring with name "; groupName]
+	| FieldHeader(groupName) ->	logListToAst ["Ring with name "; groupName]
+
+let logGroupBodyAst = function
+	| GroupBody(elements, addFunctionBlock) -> 
+		logStringToAst "Elements ";
+		logSetAst elements;
+		logFunctionBlockAst addFunctionBlock
+		
+let logExtendedGroupBodyAst = function
+	| ExtendedGroupBody(GroupBody(elements, addFunctionBlock), multiplyFunctionBlock) -> 
+		logStringToAst "Elements ";
+		logSetAst elements;
+		logFunctionBlockAst addFunctionBlock;
+		logFunctionBlockAst multiplyFunctionBlock
+		
+let logGroupBlockAst = function
+	| GroupDeclaration(groupHeader, groupBody) -> 
+		logGroupHeaderAst groupHeader;
+		logGroupBodyAst groupBody
+	| ExtendedGroupDeclaration(extendedGroupHeader, extendedGroupBody) -> 
+		logExtendedGroupHeaderAst extendedGroupHeader;
+		logExtendedGroupBodyAst extendedGroupBody	
+
 let logProgramAst = function
 	  (* TODO log functions and groups *)
-	  Program(mainBlock, functionBlockList, groupBlockList) -> logListToAst ["Program of size"; "1"]; logMainBlockAst mainBlock
+	  Program(mainBlock, functionBlockList, groupBlockList) -> 
+			logListToAst ["Program of size"; "1"]; 
+			logMainBlockAst mainBlock;
+			ignore (List.map logGroupBlockAst groupBlockList)
 		
 (* Logging for PLATO SAST *)
-
-let typeToString = function
-	| BooleanType -> "Booleans"
-	| NumberType(groupName) -> groupName
-
 let logListToSast logStringList = 
 	(logToFileAppend true) "Sast.log" (String.concat " " logStringList)
 	
@@ -150,10 +199,9 @@ let logjavaPrimitiveAst = function
   | JavaInt(intValue) -> logListToJavaAst ["Java int"; string_of_int intValue]
 
 let rec logJavaValueAst = function
-	(* TODO add logging for maps *)
 	| JavaValue(javaPrimitive) -> logjavaPrimitiveAst javaPrimitive
-	| JavaMap(keyList, valueList) -> 
-		logStringToJavaAst "Java map with keys ";
+	| JavaMap(mapName, keyList, valueList) -> 
+		logListToJavaAst ["Java map "; mapName; "with keys"];
 		logListToJavaAst keyList;
 	  logStringToJavaAst " and values ";
 	  logListToJavaAst valueList
@@ -181,8 +229,9 @@ let logJavaBlockAst = function
 	  JavaBlock(statementList) -> logListToJavaAst ["Java block with"; string_of_int (List.length statementList); "statements"]; ignore (List.map logJavaStatementAst statementList)
 
 let logJavaMethodAst = function
-	  JavaMain(methodBlock) -> logStringToJavaAst "Java main"; logJavaBlockAst methodBlock
-	  | JavaFunction(_, _) -> ()
+	  | JavaMain(methodBlock) -> logStringToJavaAst "Java main"; logJavaBlockAst methodBlock
+	  | JavaDefaultConstructor(_, _) -> ()
+		| JavaFunction(_, _) -> ()
 
 let logJavaClassAst = function
   (* TODO log instance variables here *)

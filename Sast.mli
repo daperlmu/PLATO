@@ -29,8 +29,10 @@ type typedFunctionBlock =
 type typedMainBlock = 
 	  TypedMainBlock of typedStatementBlock	
 																		
-type typedGroupBlock =
-    TypedGroupDeclaration of string * int list * int list list * int list
+type typedExtendedGroupBlock =
+	| TypedGroupDeclaration of string * int list * int list list * int list
+	| TypedRingDeclaration of string * int list * int list list * int list	* int list list	
+  | TypedFieldDeclaration of string * int list * int list list * int list	* int list list * int list	
 
 type typedProgram = 
-	  TypedProgram of typedMainBlock * typedFunctionBlock list * typedGroupBlock list
+	  TypedProgram of typedMainBlock * typedFunctionBlock list * typedExtendedGroupBlock list

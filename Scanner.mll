@@ -15,7 +15,10 @@ rule token = parse
 	| "PRINT" { PRINT }
 	| "RETURN" { RETURN }
 	| "GROUP" { GROUP }
+	| "RING" { RING }
+	| "FIELD" { FIELD }
 	| "add" { ADD }
+	| "multiply" { MULTIPLY }
 	| "main()" { MAIN_HEADER }
 	| '+' { PLUS }
 	| '-' { MINUS }

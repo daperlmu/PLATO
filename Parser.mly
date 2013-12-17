@@ -4,7 +4,7 @@
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
 %token PLUS MINUS TIMES DIVIDE PERCENT CARET AND OR 
-%token OVER PRINT RETURN GROUP ADD
+%token OVER PRINT RETURN GROUP RING FIELD ADD MULTIPLY
 %token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET
 %token <bool> BOOLEAN
 %token <int> NUMBER
@@ -110,6 +110,12 @@ addFunctionHeader:  INTEGER_TYPE ADD LPAREN INTEGER_TYPE IDENTIFIER COMMA INTEGE
 														
 addFunctionBlock: addFunctionHeader statementBlock { FunctionDeclaration($1, $2) }
 
+multiplyFunctionHeader:  INTEGER_TYPE MULTIPLY LPAREN INTEGER_TYPE IDENTIFIER COMMA INTEGER_TYPE IDENTIFIER RPAREN { { returnType = OtherType(NumberType("Integers"));
+														 functionName = "multiply";
+														 parameters = [Parameter(NumberType("Integers"), $5); Parameter(NumberType("Integers"), $8)]  } }
+														
+multiplyFunctionBlock: multiplyFunctionHeader statementBlock { FunctionDeclaration($1, $2) }
+
 functionHeader:
   | platoFunctionType IDENTIFIER LPAREN parameterList RPAREN { { returnType = $1;
 														 functionName = $2;
@@ -133,14 +139,26 @@ groupHeader:
 		
 groupBody:
   /* TODO this needs a real set, make sure to update $4 when fixing this */
-     OPEN_BRACE CLOSE_BRACE SEMICOLON addFunctionBlock { GroupBody([0; 1], $4) }
+     OPEN_BRACE CLOSE_BRACE SEMICOLON addFunctionBlock { GroupBody([0; 1; 2], $4) }
 
 groupBlock: 
-    groupHeader groupBody { GroupDeclaration($1, $2) } 
+    groupHeader OPEN_BRACE groupBody CLOSE_BRACE { GroupDeclaration($1, $3) } 
+
+extendedGroupHeader:
+  | RING IDENTIFIER	{ RingHeader($2) }	
+	| FIELD IDENTIFIER	{ FieldHeader($2) }		
+
+extendedGroupBody:
+  /* TODO this needs a real set, make sure to update $4 when fixing this */
+     groupBody multiplyFunctionBlock { ExtendedGroupBody($1, $2) }
+		
+extendedGroupBlock:
+  | groupHeader OPEN_BRACE groupBody CLOSE_BRACE { GroupDeclaration($1, $3) } 
+  | extendedGroupHeader OPEN_BRACE extendedGroupBody CLOSE_BRACE { ExtendedGroupDeclaration($1, $3) }		
 		
 groupBlockList:
   | { [] }
-  | groupBlockList groupBlock { $2::$1 }
+	| groupBlockList extendedGroupBlock { $2 :: $1 }
 
 program:
     mainBlock functionBlockList groupBlockList { Program($1, List.rev $2, List.rev $3) }

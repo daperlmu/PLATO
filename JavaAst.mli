@@ -10,12 +10,12 @@ type javaPrimitive =
 
 type javaValue =
 	| JavaValue of javaPrimitive
-	| JavaMap of string list * string list
+	| JavaMap of string * string list * string list
 
 type javaExpression = 
 	| JavaConstant of javaValue
   | JavaVariable of string
-  	| JavaReturn of javaExpression
+  | JavaReturn of javaExpression
 	| JavaAssignment of string * javaExpression
 	| JavaDeclaration of javaType * string * javaExpression option
 	| JavaCall of string * string * javaExpression list
@@ -34,6 +34,7 @@ type javaInstanceVariable =
 
 type javaMethod	=
 	  | JavaMain of javaBlock
+		| JavaDefaultConstructor of string * javaBlock
 	  | JavaFunction of Ast.functionHeader * javaBlock
 						
 type javaClass = 
