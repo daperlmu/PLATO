@@ -22,12 +22,12 @@ type javaExpression =
 	| JavaDeclaration of javaType * string * javaExpression option
 	| JavaCall of string * string * javaExpression list
 and javaElseIf = 
-	JavaElseIf of javaExpression * 
-
-type javaStatement =
+	JavaElseIf of javaExpression * javaBlock
+and javaElse = 
+	JavaElse of javaBlock
+and javaStatement =
 	  JavaStatement of javaExpression
-
-type javaBlock =
+and javaBlock =
 	  JavaBlock of javaStatement list
 
 (* type javaFunctionHeader = 
