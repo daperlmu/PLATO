@@ -76,7 +76,6 @@ let canCast fromType toType =
 		| _ -> false
 
 type symbolTable = {
-	(* TODO this would be faster with a set *)
   mutable variables : variableDeclaration list;
 }
 
@@ -138,15 +137,15 @@ let canApplyMinus = function
 	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
 	| _ -> false
 
-(* TODO need to make this work for rings *)
+(* TODO need to make this work only for rings *)
 let canApplyTimes = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
-(* TODO need to make this work for fields *)
+(* TODO need to make this work only for fields *)
 let canApplyDivide = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
 	| _ -> false
 
 let canApplyMod = function
@@ -446,7 +445,7 @@ let rec findInverseIndexHelper groupName element groupIdentity currentIndex = fu
 	| head::tail ->
 		if head = groupIdentity
 		then currentIndex
-		else findInverseIndexHelper groupName element groupIdentity (currentIndex + 1) tail
+		else findInverseIndexHelper groupName element groupIdentity (currentIndex + 1) tail 
 
 let findInverseIndex groupName element groupIdentity additionResults = findInverseIndexHelper groupName element groupIdentity 0 additionResults
 
@@ -457,75 +456,136 @@ let rec generateInverseListHelper groupName groupElements remainingElements grou
 		let headInverse = List.nth groupElements (findInverseIndex groupName head groupIdentity (List.hd remainingTable))
 		in generateInverseListHelper groupName groupElements tail groupIdentity (List.tl remainingTable) (headInverse :: listSoFar)
 
-let generateInverseList groupName groupElements groupTable = 
-	let groupIdentity = (getGroupIdentity groupName groupElements groupTable)
-	in generateInverseListHelper groupName groupElements groupElements groupIdentity groupTable []
-
-let rec getIndexHelper element startIndex = function
-	| [] -> raise Not_found
-	| head::tail -> if head == element 
-                  then startIndex
-									else getIndexHelper element (startIndex + 1) tail
-
-let getIndex element list =  getIndexHelper element 0 list
-	
-let rec generateLightsTable rowElements groupElements groupTable tableSoFar =
-	match rowElements with
-	| [] -> List.rev tableSoFar
-	| head::tail -> 
-		try let headIndex = getIndex head groupElements
-				in generateLightsTable tail groupElements groupTable ((List.nth groupTable headIndex)::tableSoFar)
-		with Not_found -> raise(PlatoError("Error while constructing associtivity tables"))
-
-let rec rowsMatch table1 rows1 table2 rows2 =
-	match rows1 with 
-	| [] -> true
-	| head::tail -> let table2Index = getIndex head rows2
-	                in if List.hd table1 = List.nth table2 table2Index
-	                   then (rowsMatch (List.tl table1) tail table2 rows2)
-									   else false
+let generateInverseList groupName groupElements groupIdentity groupTable = generateInverseListHelper groupName groupElements groupElements groupIdentity groupTable []
 
 let print_table table = 
 	ignore (List.map (fun intList -> ignore (List.map print_int intList); print_string "\n") table)
 
-(* TODO test a non-commutative group *)
-let rec isAssociative groupElements groupTable = function
+let rec isElement list element =
+	match list with 
+	| [] -> false
+	| head::tail -> if element = head
+	                then true
+									else isElement tail element
+
+let isClosed groupElements groupTable = 
+	let allTrue list = List.fold_left (&&) true list
+  in allTrue (List.map (fun intList -> allTrue (List.map (isElement groupElements) intList)) groupTable)	
+																																																																																														
+let checkAssociative a b c groupTable = 
+	let groupTimes = fun a b -> List.nth (List.nth groupTable a) b
+	in let starResult = groupTimes (groupTimes a b) c
+	   in let circleResult = groupTimes a (groupTimes b c)
+		    in starResult = circleResult
+						
+let rec checkAssociativeList aList b c groupTable	=
+	match aList with
 	| [] -> true
-	| head::tail -> let lightsTable = generateLightsTable head groupElements groupTable [] 
-		              in if rowsMatch groupTable groupElements lightsTable head
-	                	 then isAssociative groupElements groupTable tail
-									   else false 
-				
+	| head::tail -> if checkAssociative head b c groupTable 
+	                then checkAssociativeList tail b c groupTable	
+		              else false
+								
+let rec checkAssociativeListPair aList bList c groupTable =	
+	match bList with
+	| [] -> true
+	| head::tail -> if checkAssociativeList aList head c groupTable 
+	                then checkAssociativeListPair aList tail c groupTable	
+		              else false		
+		
+let rec checkAssociativeListTriple aList bList cList groupTable =	
+	match cList with
+	| [] -> true
+	| head::tail -> if checkAssociativeListPair aList bList head groupTable 
+	                then checkAssociativeListTriple aList bList tail groupTable	
+		              else false				
+					
+let isAssociative groupElements groupTable = checkAssociativeListTriple groupElements groupElements groupElements groupTable 				
+
+let rec getIndexHelper element list startIndex =
+	match list with 
+	| [] -> raise Not_found
+	| head::tail -> 
+		if element = head 
+	  then startIndex
+	  else getIndexHelper element tail (startIndex + 1)
+
+let getIndex element list = getIndexHelper element list 0												
+						
+let rec removeNthHelper n list acc = 
+	if n = 0 
+	then (List.rev acc) @ (List.tl list)
+	else removeNthHelper (n - 1) (List.tl list) ((List.hd list)::acc)					
+						
+let removeNth n list = removeNthHelper n list []						
+						
+let rec isCommutative table =
+	match table with 
+	| [] -> true
+	| _ -> if List.hd table = List.map List.hd table
+	       then isCommutative (List.tl (List.map List.tl table))
+				 else false						
+
+let checkDistributive a b c additionTable multiplicationTable = 
+  let groupPlus = fun a b -> List.nth (List.nth additionTable a) b
+	in let groupTimes = fun a b -> List.nth (List.nth multiplicationTable a) b
+	   in let starResult = groupTimes a (groupPlus b c)
+	      in let circleResult = groupPlus (groupTimes a b) (groupTimes a c)
+		       in starResult = circleResult
+						
+let rec checkDistributiveList aList b c additionTable multiplicationTable	=
+	match aList with
+	| [] -> true
+	| head::tail -> if checkDistributive head b c additionTable multiplicationTable 
+	                then checkDistributiveList tail b c additionTable multiplicationTable	
+		              else false
+								
+let rec checkDistributiveListPair aList bList c additionTable multiplicationTable =	
+	match bList with
+	| [] -> true
+	| head::tail -> if checkDistributiveList aList head c additionTable multiplicationTable 
+	                then checkDistributiveListPair aList tail c additionTable multiplicationTable	
+		              else false		
+		
+let rec checkDistributiveListTriple aList bList cList additionTable multiplicationTable =	
+	match cList with
+	| [] -> true
+	| head::tail -> if checkDistributiveListPair aList bList head additionTable multiplicationTable 
+	                then checkDistributiveListTriple aList bList tail additionTable multiplicationTable	
+		              else false				
+					
+let distributes groupElements additionTable multiplicationTable = checkDistributiveListTriple groupElements groupElements groupElements additionTable multiplicationTable
+						
 let checkExtendedGroupBlock = function
 	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) -> 
 		  let groupElementList = evaluateSimpleSet groupElements
 			in let additionTable = generateTable groupElementList groupAdditionFunction
-				 in if isAssociative groupElementList additionTable additionTable
-				    then let additiveInverseList = generateInverseList groupName groupElementList additionTable
+				 in if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable)
+				    then let additiveInverseList = generateInverseList groupName groupElementList (getGroupIdentity groupName groupElementList additionTable) additionTable
 			  	        in TypedGroupDeclaration(groupName, groupElementList, additionTable, additiveInverseList)
-			      else raise(PlatoError("Group addition must be associative"))
+			      else raise(PlatoError("Group addition must be closed and associative"))
    | ExtendedGroupDeclaration(RingHeader(groupName), ExtendedGroupBody(GroupBody(groupElements, groupAdditionFunction), extendedGroupMultiplicationFunction)) ->
 		let groupElementList = evaluateSimpleSet groupElements
 		in let additionTable = generateTable groupElementList groupAdditionFunction
-			 in if isAssociative groupElementList additionTable additionTable
-		      then let additiveInverseList = generateInverseList groupName groupElementList additionTable
+			 in if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable) && (isCommutative additionTable)
+		      then let additiveInverseList = generateInverseList groupName groupElementList (getGroupIdentity groupName groupElementList additionTable) additionTable
 			         in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
-					  	    in if isAssociative groupElementList multiplicationTable multiplicationTable
+					  	    in if (isClosed groupElementList multiplicationTable) && (isAssociative groupElementList multiplicationTable) && (distributes groupElementList additionTable multiplicationTable)
 						    	   then TypedRingDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable)
-				 	  			   else raise(PlatoError("Ring multiplication must be associative"))
-				  else raise(PlatoError("Group addition must be associative"))
+				 	  			   else raise(PlatoError("Ring multiplication must be closed and associative and distribute over addition"))
+				  else raise(PlatoError("Ring addition must be closed and associative"))
 	 | ExtendedGroupDeclaration(FieldHeader(groupName), ExtendedGroupBody(GroupBody(groupElements, groupAdditionFunction), extendedGroupMultiplicationFunction)) ->  
 			let groupElementList = evaluateSimpleSet groupElements
 			in let additionTable = generateTable groupElementList groupAdditionFunction
-			   in if isAssociative groupElementList additionTable additionTable
-		        then let additiveInverseList = generateInverseList groupName groupElementList additionTable
-			           in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
-						        in if isAssociative groupElementList multiplicationTable multiplicationTable
-								       (* TODO should not look for inverse of additive identity *)
-										   then let multiplicitiveInverseList = generateInverseList groupName groupElementList multiplicationTable
-											    	in TypedFieldDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList)
-									     else raise(PlatoError("Field multiplication must be associative"))
-				    else raise(PlatoError("Group addition must be associative"))
+			   in if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable) && (isCommutative additionTable)
+		        then let additiveIdentity = getGroupIdentity groupName groupElementList additionTable
+						     in let additiveInverseList = generateInverseList groupName groupElementList additiveIdentity additionTable
+			              in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
+						           in if (isClosed groupElementList multiplicationTable) && (isAssociative groupElementList multiplicationTable) && (isCommutative multiplicationTable) && (distributes groupElementList additionTable multiplicationTable)
+										      then let additiveIdentityIndex = getIndex additiveIdentity groupElementList
+											         in let multiplicitiveInverseList = generateInverseList groupName (removeNth additiveIdentityIndex groupElementList)  (getGroupIdentity groupName groupElementList multiplicationTable) (List.map (removeNth additiveIdentityIndex) (removeNth additiveIdentityIndex multiplicationTable))
+											    	      in TypedFieldDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList, additiveIdentity)
+									        else raise(PlatoError("Field multiplication must be closed, associative, commutative and distribute over addition"))
+				    else raise(PlatoError("Field addition must be closed and associative"))
 			   
 let checkProgram = function
 	  Program(mainBlock, functionBlockList, extendedGroupBlockList) -> TypedProgram(checkMainBlock mainBlock, List.map checkFunctionBlock functionBlockList, List.map checkExtendedGroupBlock extendedGroupBlockList)	 
@@ -595,17 +655,18 @@ let createJavaExtendedGroupClass = function
 					[JavaStatement(JavaConstant(listTablePairToMap "additionTable" groupElements additionTable));
 					 JavaStatement(JavaConstant(listPairToMap "additiveInverseList" groupElements additiveInverseList));
 					 JavaStatement(JavaConstant(listTablePairToMap "multiplicationTable" groupElements multiplicationTable))]))]))
-	| TypedFieldDeclaration(groupName, groupElements, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList) -> 
+	| TypedFieldDeclaration(groupName, groupElements, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList, additiveIdentity) -> 
 		 (JavaClass(
 			groupName, 
 			"Fields", 
 			[JavaDefaultConstructor(
 				groupName,
 				JavaBlock(
-					[JavaStatement(JavaConstant(listTablePairToMap "additionTable" groupElements additionTable));
+					[JavaStatement(JavaAssignment("additiveIdentity", JavaConstant(JavaValue(JavaInt(additiveIdentity)))));
+					 JavaStatement(JavaConstant(listTablePairToMap "additionTable" groupElements additionTable));
 					 JavaStatement(JavaConstant(listPairToMap "additiveInverseList" groupElements additiveInverseList));
 					 JavaStatement(JavaConstant(listTablePairToMap "multiplicationTable" groupElements multiplicationTable));
-					 JavaStatement(JavaConstant(listPairToMap "multiplicitiveInverseList" groupElements multiplicitiveInverseList))]))]))
+					 JavaStatement(JavaConstant(listPairToMap "multiplicitiveInverseList" (List.filter (fun element -> element <> additiveIdentity) groupElements) multiplicitiveInverseList))]))]))
 
 let createJavaAst = function
 	  TypedProgram(typedMainBlock, typedFunctionBlockList, typedExtendedGroupBlockList) -> JavaClassList((createJavaMainClass typedFunctionBlockList typedMainBlock)::(List.map createJavaExtendedGroupClass typedExtendedGroupBlockList))
@@ -698,15 +759,21 @@ let generateJavaMethod logToJavaFile = function
 			(logToJavaFile ("public " ^ className ^ "()");
 			 generateJavaBlock logToJavaFile javaBlock)
 
+let removeFile fileName = 
+	if Sys.file_exists fileName
+	then Sys.remove fileName
+
 let generateJavaClass fileName = function
 	  JavaClass(javaClassName, javaSuperClassName, javaMethodList) -> 
 			let fullClassName = (if javaClassName = "Main" then (javaClassName ^ "_" ^ fileName) else javaClassName)
-			in let logToJavaFile = logToFileAppend false (fullClassName ^ ".java")
-				 in let extendsString = (if javaSuperClassName = "" then "" else ("extends " ^ javaSuperClassName))
-					  in logToJavaFile "import java.util.*;\n\n";
-						   logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
-				       ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
-			         logToJavaFile "}\n"
+			in let fullFileName = fullClassName ^ ".java"
+				 in removeFile fullFileName;
+			     let logToJavaFile = logToFileAppend false fullFileName
+				   in let extendsString = (if javaSuperClassName = "" then "" else ("extends " ^ javaSuperClassName))
+					    in logToJavaFile "import java.util.*;\n\n";
+						     logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
+				         ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
+			           logToJavaFile "}\n"
 			
 let generatePlatoCommonClass = 
 	let logToCommonClassFile = logToFileOverwrite false "PlatoCommon.java"

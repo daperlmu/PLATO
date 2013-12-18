@@ -2,7 +2,7 @@ main() {
   NUMBER OVER z3 x := 2;
   PRINT x * x;
   PRINT 2 * 2;
-  NUMBER OVER z3 y := 2;
+  NUMBER OVER z5 y := 2;
   PRINT y / 3;
   PRINT 2 / 3;
 }

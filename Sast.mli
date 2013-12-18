@@ -37,7 +37,7 @@ type typedMainBlock =
 type typedExtendedGroupBlock =
 	| TypedGroupDeclaration of string * int list * int list list * int list
 	| TypedRingDeclaration of string * int list * int list list * int list	* int list list	
-  | TypedFieldDeclaration of string * int list * int list list * int list	* int list list * int list	
+  | TypedFieldDeclaration of string * int list * int list list * int list	* int list list * int list * int	
 
 type typedProgram = 
 	  TypedProgram of typedMainBlock * typedFunctionBlock list * typedExtendedGroupBlock list
