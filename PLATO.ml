@@ -390,7 +390,7 @@ let checkFunctionBlock = function
 		  						let functionEnvironment = emptyEnviroment
 		  							in let returnStmtsInFunctionBlock = getReturnStmts statementBlock
 		  								in if (List.length returnStmtsInFunctionBlock)=0
-	  									then raise(missingReturnStmtException functionHeader.functionName (Logger.typeToString returnType))
+	  									then raise(missingReturnStmtException functionHeader.functionName (typeToString returnType))
 	  									else
   											(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
 		  										let checkedStatementBlock = checkStatementBlock functionEnvironment statementBlock
@@ -412,7 +412,7 @@ let checkFunctionBlock = function
 				  								in let lastStmt = getLastStmtInBlock statementBlock
 				  								   in let lastStmtType = getExpressionType (extractExpressionFromStmt functionEnvironment lastStmt)
 				  									  in if not (lastStmtType=returnType)
-				  										 then raise(incompatibleTypesReturnStmt functionHeader.functionName (Logger.typeToString returnType) (Logger.typeToString lastStmtType))
+				  										 then raise(incompatibleTypesReturnStmt functionHeader.functionName (typeToString returnType) (typeToString lastStmtType))
 				  										 else TypedFunctionDeclaration(functionHeader, checkedStatementBlock))
 				  												(*  - check if the returned expression can be cast up to the function's expected return type
 				  													- need to check all return statements in the function to make sure they are type compatible with the expected return type
