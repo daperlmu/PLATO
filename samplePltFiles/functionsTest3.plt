@@ -1,6 +1,6 @@
 main() {
 
 }
-INTEGER lol() {
+VOID lol() {
 RETURN 0;
 }

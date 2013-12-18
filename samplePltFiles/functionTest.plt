@@ -9,14 +9,15 @@ main() {
   PRINT z1;
   PRINT z2;  
 }
-INTEGER lol() {
+INTEGER lol(INTEGER a) {
   BOOLEAN q := TRUE;
   BOOLEAN r := q;
   r := r OR NOT r;
-  INTEGER qvxy6 := 1;
+  INTEGER qvxy6 := a;
   NUMBER ct := 2;
   PRINT q;
   PRINT r;
   PRINT qvxy6;
   PRINT ct;
+	RETURN a;
 }

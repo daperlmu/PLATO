@@ -22,6 +22,12 @@ let identityException groupName =
 let inverseException groupName element=
 	PlatoError("Error while generating group, ring or field " ^ groupName ^ ".  Could not find inverse of " ^ (string_of_int element))
 
+let voidFunctionHasReturnException functionName = PlatoError("Function: " ^ functionName ^ " is a void function. Void functions cannot return an expression")
+
+let missingReturnStmtException functionName functionReturnType = PlatoError("Function: " ^ functionName ^ " is a typed function of type " ^ functionReturnType ^ ". Missing return statement. Expecting return statement of type " ^ functionReturnType ^ ".")
+
+let incompatibleTypesReturnStmt functionName functionReturnType lastStmtType = PlatoError("Return statement incompatible types for the Function: " ^ functionName ^ ". Required: " ^ functionReturnType ^ ". Found: " ^ lastStmtType ^ ".")
+
 (* Intepreter for simple statements *)
 let evaluateSimpleUnop unopValue = function
 	| Negation -> -unopValue
@@ -91,6 +97,9 @@ let updateScope scope variableDeclaration =
 let emptyEnviroment = 
 	let emptyScope = { variables = [] }
 	in { scope = emptyScope }
+
+let convertParamToVarDec = function
+	Parameter(variableType, variableName) -> (variableName, variableType)
 
 let getExpressionType = function 
 	| TypedBoolean(_, expressionType) -> expressionType
@@ -339,14 +348,67 @@ let rec checkStatement environment = function
 						       TypedDeclaration((variableName, variableType), expressionDetails))
 					   else raise(castException expressionType variableType)
 
+let extractExpressionFromStmt environment = function 
+	| Print(expression) -> checkExpression environment expression
+	| Return(expression) -> checkExpression environment expression
+  | Assignment(variableName, newValue) -> checkExpression environment newValue 
+	| Declaration(variableType, variableName, newValue) -> checkExpression environment newValue
+
 let checkStatementBlock environment = function
 	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement environment) statementList) 
 
 let checkMainBlock = function
 	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock)
 
+let rec getReturnStmtsHelper = function 
+	[] -> []
+	| Return(expression)::[] -> [Return(expression)]
+	| Return(expression)::tail -> Return(expression)::getReturnStmtsHelper tail
+	| _::tail -> getReturnStmtsHelper tail
+
+let getReturnStmts = function 
+	StatementBlock(statementList) -> 
+		getReturnStmtsHelper(statementList)
+
+let checkVoidFunction = function 
+	FunctionDeclaration(functionHeader, statementBlock) ->
+		let returnStmtsInFunctionBlock = getReturnStmts statementBlock
+			in let functionEnvironment = emptyEnviroment 
+				in if (List.length returnStmtsInFunctionBlock)=0
+			  		then 
+			  			(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
+						(*- check to make sure parameter identifiers are not used in declaration statements within the function block*)
+			  			 TypedFunctionDeclaration(functionHeader, checkStatementBlock functionEnvironment statementBlock))
+			  		else raise(voidFunctionHasReturnException functionHeader.functionName)
+
+let getLastStmtInBlock = function
+	StatementBlock(statementList) -> List.hd (List.rev statementList)
+
 let checkFunctionBlock = function
-	  FunctionDeclaration(functionHeader, statementBlock) -> TypedFunctionDeclaration(functionHeader, checkStatementBlock emptyEnviroment statementBlock)
+	  FunctionDeclaration(functionHeader, statementBlock) -> 
+	  	let functionReturnType = functionHeader.returnType
+		  			in (match functionReturnType with
+		  					VoidType -> checkVoidFunction (FunctionDeclaration(functionHeader, statementBlock))
+		  					| OtherType(returnType) -> 
+		  						let functionEnvironment = emptyEnviroment
+		  							in let returnStmtsInFunctionBlock = getReturnStmts statementBlock
+		  								in if (List.length returnStmtsInFunctionBlock)=0
+		  									then raise(missingReturnStmtException functionHeader.functionName (Logger.typeToString returnType))
+		  									else
+	  											(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
+		  											(* - check to make sure parameter identifiers are not used in declaration statements within the function block*)
+			  										let checkedStatementBlock = checkStatementBlock functionEnvironment statementBlock
+					  									in let lastStmt = getLastStmtInBlock statementBlock
+					  										in let lastStmtType = getExpressionType (extractExpressionFromStmt functionEnvironment lastStmt)
+					  											in if not (lastStmtType=returnType)
+					  												then raise(incompatibleTypesReturnStmt functionHeader.functionName (Logger.typeToString returnType) (Logger.typeToString lastStmtType))
+					  												else TypedFunctionDeclaration(functionHeader, checkedStatementBlock))
+					  												(*  - check if the returned expression can be cast up to the function's expected return type
+					  													- need to check all return statements in the function to make sure they are type compatible with the expected return type
+					  													- Check if last statement is actually a return statement
+					  												- check for unreachable code *)
+
+		  					)
 
 let rec generateTableHelper rowElements columnElements tableFunction tableSoFar =
 	match rowElements with
