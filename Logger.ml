@@ -186,7 +186,7 @@ let logStatementSast = function
 	| TypedDeclaration((variableName, variableType), newValue) ->
 	  logListToSast ["Declare"; variableName;  "as type"]; 
 		logPlatoTypeSast variableType;
-		logStringToSast " and assign to value "; 
+		logStringToSast "and assign to value "; 
 		logExpressionSast(newValue)
 
 let logStatementBlockSast = function
@@ -208,8 +208,8 @@ let logFunctionBlockSast = function
 		logStatementBlockSast statementBlock
 
 let logTableSast tableName table = 
-	logStringToSast ("Table " ^ tableName ^ "\n");
-	ignore (List.map (fun intList -> logListToSast (List.map string_of_int intList); logStringToSast "\n") table)
+	logStringToSast ("Table " ^ tableName);
+	ignore (List.map (fun intList -> logListToSast (List.map string_of_int intList)) table)
 		
 let logGroupBlockSast = function
 	| TypedGroupDeclaration(groupName, groupElements, additionTable, additiveInverseList) ->
@@ -223,14 +223,15 @@ let logGroupBlockSast = function
 		logTableSast "additionTable" additionTable;
 		logListToSast ("additiveInverseList"::(List.map string_of_int additiveInverseList));
 		logTableSast "multiplicationTable" multiplicationTable;
-  | TypedFieldDeclaration(fieldName, fieldElements, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList) ->
+  | TypedFieldDeclaration(fieldName, fieldElements, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList, additiveIdentity) ->
 		logListToSast ["Field with name "; fieldName; "and elements"];
 		logListToSast (List.map string_of_int fieldElements);
 		logTableSast "additionTable" additionTable;
 		logListToSast ("additiveInverseList"::(List.map string_of_int additiveInverseList));
 		logTableSast "multiplicationTable" multiplicationTable;
-		logListToSast ("multiplicitiveInverseList"::(List.map string_of_int multiplicitiveInverseList))
-					
+		logListToSast ("multiplicitiveInverseList"::(List.map string_of_int multiplicitiveInverseList));
+		logListToSast ["Additive identity"; string_of_int additiveIdentity]
+								
 let logProgramSast = function
     TypedProgram(mainBlock, typedFunctionBlockList, typedGroupBlockList) -> 
 			logListToSast ["Program of size"; "1"]; 

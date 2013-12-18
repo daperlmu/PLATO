@@ -13,7 +13,69 @@ do
 	source_file_path=$tests_dir"/"$source_file
 	str_len=${#source_file}
 	java_out="Main_"${source_file:0:`echo $str_len - 4 | bc`}".java"
-	./plt.sh $source_file_path dirty no_run
+	compile_result=`./plt.sh $source_file_path dirty no_run`
+	if [ $? -eq 20 ]
+	then
+		src_path_len=${#source_file_path}
+		expected_out=${source_file_path:0:`echo $src_path_len - 4 | bc`}".result"
+		if ! [ -e "$expected_out" ]
+		then
+			regressions[$failure_count]=$source_file
+			((failure_count++))
+			echo "FAILURE $failure_count: '$expected_out' does not exist! Could not find an expected results file to compare against!"
+			echo "'$source_file' FAILED regression test!"
+			if [ -e $java_out ]
+			then
+				rm -f $java_out
+			fi
+			if [ -e "Main_"${source_file:0:`echo $str_len - 4 | bc`}".class" ]
+			then
+				rm -f "Main_"${source_file:0:`echo $str_len - 4 | bc`}".class"
+			fi
+			echo -e '\n-------------END-------------------------------'
+			echo ''
+			continue
+		fi
+		java_out_len=${#java_out}
+		echo $compile_result > ${java_out:0:`echo $java_out_len - 5 | bc`}.actual.result
+		subs_diff_result=`echo $java_out_len - 5 | bc`
+		diff_result=`diff ${java_out:0:$subs_diff_result}.actual.result $expected_out`
+
+		if ! [ $? -eq 0 ]
+		then
+			regressions[$failure_count]=$source_file
+			((failure_count++))
+			echo "FAILURE $failure_count: Expected output does NOT match actual output!"
+			echo "'$source_file' FAILED regression test!"
+			if [ -e $java_out ]
+			then
+				rm -f $java_out
+			fi
+			if [ -e "Main_"${source_file:0:`echo $str_len - 4 | bc`}".class" ]
+			then
+				rm -f "Main_"${source_file:0:`echo $str_len - 4 | bc`}".class"
+			fi
+			echo -e '\n-------------END-------------------------------'
+			echo ''
+			continue
+		fi
+
+		echo "'$source_file' PASSED regression test!"
+		if [ -e $java_out ]
+		then
+			rm -f $java_out
+		fi
+		if [ -e "Main_"${source_file:0:`echo $str_len - 4 | bc`}".class" ]
+		then
+			rm -f "Main_"${source_file:0:`echo $str_len - 4 | bc`}".class"
+		fi
+		echo -e '\n-------------END-------------------------------'
+		echo ''
+		passes[$pass_count]=$source_file
+		((pass_count++))
+		continue
+	fi
+
 	if ! [ $? -eq 0 ]
 	then
 		regressions[$failure_count]=$source_file

@@ -1,3 +1,3 @@
 main() {
-  BOOLEAN x = 0;
+  BOOLEAN x := 0;
 }

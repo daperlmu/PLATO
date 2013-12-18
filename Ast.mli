@@ -42,11 +42,16 @@ type expression =
 type statement =
 	| Print of expression
 	| Return of expression
+	| If of expression * statementBlock * elseIfBlock list * elseBlock
+	| IfNoElse of expression * statementBlock * elseIfBlock list
   | Assignment of string * expression
 	| Declaration of platoType * string * expression	
-				
-type statementBlock = 
+and statementBlock = 
 	  StatementBlock of statement list
+and elseBlock = 
+	ElseBlock of statementBlock
+and elseIfBlock = 
+	ElseIfBlock of expression * statementBlock
 
 type parameter = Parameter of platoType * string
 

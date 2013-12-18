@@ -6,7 +6,7 @@
 %token LESS_THAN GREATER_THAN EQUAL
 %token PLUS MINUS BACKSLASH TIMES DIVIDE PERCENT CARET AND OR 
 %token OVER PRINT RETURN GROUP RING FIELD ADD MULTIPLY
-%token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET
+%token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET IF ELSEIF ELSE
 %token <bool> BOOLEAN
 %token <int> NUMBER
 %token <string> IDENTIFIER
@@ -80,6 +80,8 @@ expression:
 statement:
   | PRINT expression SEMICOLON { Print($2) }
   | RETURN expression SEMICOLON { Return($2) }
+  | IF LPAREN expression RPAREN statementBlock elseIfBlockList elseBlock { If($3, $5, $6, $7) }
+  | IF LPAREN expression RPAREN statementBlock elseIfBlockList { IfNoElse($3, $5, $6) }
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
 	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
 
@@ -89,6 +91,16 @@ statementList:
 
 statementBlock: 
     OPEN_BRACE statementList CLOSE_BRACE { StatementBlock(List.rev $2) }
+
+elseBlock:
+	ELSE statementBlock { ElseBlock($2) }
+
+elseIfBlock:
+	ELSEIF LPAREN expression RPAREN statementBlock { ElseIfBlock($3, $5) }
+
+elseIfBlockList:
+	| { [] }
+	| elseIfBlockList elseIfBlock { $2::$1 }
 
 parameter:
 	platoType IDENTIFIER { Parameter($1, $2) }

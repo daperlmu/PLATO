@@ -76,7 +76,6 @@ let canCast fromType toType =
 		| _ -> false
 
 type symbolTable = {
-	(* TODO this would be faster with a set *)
   mutable variables : variableDeclaration list;
 }
 
@@ -376,12 +375,10 @@ let checkVoidFunction = function
 	FunctionDeclaration(functionHeader, statementBlock) ->
 		let returnStmtsInFunctionBlock = getReturnStmts statementBlock
 			in let functionEnvironment = emptyEnviroment 
-				in if (List.length returnStmtsInFunctionBlock)=0
-			  		then 
-			  			(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
-						(*- check to make sure parameter identifiers are not used in declaration statements within the function block*)
+			   in if (List.length returnStmtsInFunctionBlock)=0
+			  	  then (ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
 			  			 TypedFunctionDeclaration(functionHeader, checkStatementBlock functionEnvironment statementBlock))
-			  		else raise(voidFunctionHasReturnException functionHeader.functionName)
+			  	  else raise(voidFunctionHasReturnException functionHeader.functionName)
 
 let getLastStmtInBlock = function
 	StatementBlock(statementList) -> List.hd (List.rev statementList)
@@ -395,20 +392,34 @@ let checkFunctionBlock = function
 		  						let functionEnvironment = emptyEnviroment
 		  							in let returnStmtsInFunctionBlock = getReturnStmts statementBlock
 		  								in if (List.length returnStmtsInFunctionBlock)=0
-		  									then raise(missingReturnStmtException functionHeader.functionName (Logger.typeToString returnType))
-		  									else
-	  											(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
-		  											(* - check to make sure parameter identifiers are not used in declaration statements within the function block*)
-			  										let checkedStatementBlock = checkStatementBlock functionEnvironment statementBlock
-					  									in let lastStmt = getLastStmtInBlock statementBlock
-					  										in let lastStmtType = getExpressionType (extractExpressionFromStmt functionEnvironment lastStmt)
-					  											in if not (lastStmtType=returnType)
-					  												then raise(incompatibleTypesReturnStmt functionHeader.functionName (Logger.typeToString returnType) (Logger.typeToString lastStmtType))
-					  												else TypedFunctionDeclaration(functionHeader, checkedStatementBlock))
-					  												(*  - check if the returned expression can be cast up to the function's expected return type
-					  													- need to check all return statements in the function to make sure they are type compatible with the expected return type
-					  													- Check if last statement is actually a return statement
-					  												- check for unreachable code *)
+	  									then raise(missingReturnStmtException functionHeader.functionName (typeToString returnType))
+	  									else
+  											(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
+		  										let checkedStatementBlock = checkStatementBlock functionEnvironment statementBlock
+		  										(* 
+													ALGORITHM:
+													If there is an else block:
+														if it has a return statement then:
+															If the return statement in the else block is not the last statement in the else block, then raise(unreachable statement exception)
+															-A return statement at the end of the function is not necessary iff:
+																- For all other if and elseif blocks, there is a return statement at the end of every block respectively.
+																	- If for any of the if or elseif blocks, the return statement is not the last statement, then raise(unreachable statement exception)
+
+															If you reach this point, no exceptions have been raised, meaning the function safely returns a value no matter what.
+
+														else if it does not have a return statement then:
+															- Run through the current function validation code.
+
+		  										 *)
+				  								in let lastStmt = getLastStmtInBlock statementBlock
+				  								   in let lastStmtType = getExpressionType (extractExpressionFromStmt functionEnvironment lastStmt)
+				  									  in if not (lastStmtType=returnType)
+				  										 then raise(incompatibleTypesReturnStmt functionHeader.functionName (typeToString returnType) (typeToString lastStmtType))
+				  										 else TypedFunctionDeclaration(functionHeader, checkedStatementBlock))
+				  												(*  - check if the returned expression can be cast up to the function's expected return type
+				  													- need to check all return statements in the function to make sure they are type compatible with the expected return type
+				  													- Check if last statement is actually a return statement
+				  												- check for unreachable code *)
 
 		  					)
 
@@ -436,7 +447,7 @@ let rec findInverseIndexHelper groupName element groupIdentity currentIndex = fu
 	| head::tail ->
 		if head = groupIdentity
 		then currentIndex
-		else findInverseIndexHelper groupName element groupIdentity (currentIndex + 1) tail
+		else findInverseIndexHelper groupName element groupIdentity (currentIndex + 1) tail 
 
 let findInverseIndex groupName element groupIdentity additionResults = findInverseIndexHelper groupName element groupIdentity 0 additionResults
 
@@ -447,18 +458,26 @@ let rec generateInverseListHelper groupName groupElements remainingElements grou
 		let headInverse = List.nth groupElements (findInverseIndex groupName head groupIdentity (List.hd remainingTable))
 		in generateInverseListHelper groupName groupElements tail groupIdentity (List.tl remainingTable) (headInverse :: listSoFar)
 
-let generateInverseList groupName groupElements groupTable = 
-	let groupIdentity = (getGroupIdentity groupName groupElements groupTable)
-	in generateInverseListHelper groupName groupElements groupElements groupIdentity groupTable []
-
+let generateInverseList groupName groupElements groupIdentity groupTable = generateInverseListHelper groupName groupElements groupElements groupIdentity groupTable []
 
 let print_table table = 
 	ignore (List.map (fun intList -> ignore (List.map print_int intList); print_string "\n") table)
-																																
+
+let rec isElement list element =
+	match list with 
+	| [] -> false
+	| head::tail -> if element = head
+	                then true
+									else isElement tail element
+
+let isClosed groupElements groupTable = 
+	let allTrue list = List.fold_left (&&) true list
+  in allTrue (List.map (fun intList -> allTrue (List.map (isElement groupElements) intList)) groupTable)	
+																																																																																														
 let checkAssociative a b c groupTable = 
-	let groupTimes = fun a b groupTable -> List.nth (List.nth groupTable a) b
-	in let starResult = groupTimes (groupTimes a b groupTable) c groupTable
-	   in let circleResult = groupTimes a (groupTimes b c groupTable) groupTable
+	let groupTimes = fun a b -> List.nth (List.nth groupTable a) b
+	in let starResult = groupTimes (groupTimes a b) c
+	   in let circleResult = groupTimes a (groupTimes b c)
 		    in starResult = circleResult
 						
 let rec checkAssociativeList aList b c groupTable	=
@@ -507,41 +526,68 @@ let rec isCommutative table =
 	| _ -> if List.hd table = List.map List.hd table
 	       then isCommutative (List.tl (List.map List.tl table))
 				 else false						
+
+let checkDistributive a b c additionTable multiplicationTable = 
+  let groupPlus = fun a b -> List.nth (List.nth additionTable a) b
+	in let groupTimes = fun a b -> List.nth (List.nth multiplicationTable a) b
+	   in let starResult = groupTimes a (groupPlus b c)
+	      in let circleResult = groupPlus (groupTimes a b) (groupTimes a c)
+		       in starResult = circleResult
 						
-(* TODO check commutativity of rings and fields *)
-(* TODO how to check closure? *)				
+let rec checkDistributiveList aList b c additionTable multiplicationTable	=
+	match aList with
+	| [] -> true
+	| head::tail -> if checkDistributive head b c additionTable multiplicationTable 
+	                then checkDistributiveList tail b c additionTable multiplicationTable	
+		              else false
+								
+let rec checkDistributiveListPair aList bList c additionTable multiplicationTable =	
+	match bList with
+	| [] -> true
+	| head::tail -> if checkDistributiveList aList head c additionTable multiplicationTable 
+	                then checkDistributiveListPair aList tail c additionTable multiplicationTable	
+		              else false		
+		
+let rec checkDistributiveListTriple aList bList cList additionTable multiplicationTable =	
+	match cList with
+	| [] -> true
+	| head::tail -> if checkDistributiveListPair aList bList head additionTable multiplicationTable 
+	                then checkDistributiveListTriple aList bList tail additionTable multiplicationTable	
+		              else false				
+					
+let distributes groupElements additionTable multiplicationTable = checkDistributiveListTriple groupElements groupElements groupElements additionTable multiplicationTable
+						
 let checkExtendedGroupBlock = function
 	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) -> 
 		  let groupElementList = evaluateSimpleSet groupElements
 			in let additionTable = generateTable groupElementList groupAdditionFunction
-				 in if isAssociative groupElementList additionTable
-				    then let additiveInverseList = generateInverseList groupName groupElementList additionTable
+				 in if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable)
+				    then let additiveInverseList = generateInverseList groupName groupElementList (getGroupIdentity groupName groupElementList additionTable) additionTable
 			  	        in TypedGroupDeclaration(groupName, groupElementList, additionTable, additiveInverseList)
-			      else raise(PlatoError("Group addition must be associative"))
+			      else raise(PlatoError("Group addition must be closed and associative"))
    | ExtendedGroupDeclaration(RingHeader(groupName), ExtendedGroupBody(GroupBody(groupElements, groupAdditionFunction), extendedGroupMultiplicationFunction)) ->
 		let groupElementList = evaluateSimpleSet groupElements
 		in let additionTable = generateTable groupElementList groupAdditionFunction
-			 in if (isAssociative groupElementList additionTable) && (isCommutative additionTable)
-		      then let additiveInverseList = generateInverseList groupName groupElementList additionTable
+			 in if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable) && (isCommutative additionTable)
+		      then let additiveInverseList = generateInverseList groupName groupElementList (getGroupIdentity groupName groupElementList additionTable) additionTable
 			         in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
-					  	    in if isAssociative groupElementList multiplicationTable
+					  	    in if (isClosed groupElementList multiplicationTable) && (isAssociative groupElementList multiplicationTable) && (distributes groupElementList additionTable multiplicationTable)
 						    	   then TypedRingDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable)
-				 	  			   else raise(PlatoError("Ring multiplication must be associative"))
-				  else raise(PlatoError("Group addition must be associative"))
+				 	  			   else raise(PlatoError("Ring multiplication must be closed and associative and distribute over addition"))
+				  else raise(PlatoError("Ring addition must be closed and associative"))
 	 | ExtendedGroupDeclaration(FieldHeader(groupName), ExtendedGroupBody(GroupBody(groupElements, groupAdditionFunction), extendedGroupMultiplicationFunction)) ->  
 			let groupElementList = evaluateSimpleSet groupElements
 			in let additionTable = generateTable groupElementList groupAdditionFunction
-			   in if (isAssociative groupElementList additionTable) && (isCommutative additionTable)
-		        then let additiveInverseList = generateInverseList groupName groupElementList additionTable
-			           in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
-						        in if (isAssociative groupElementList multiplicationTable) && (isCommutative multiplicationTable)
-								       (* TODO should not look for inverse of additive identity *)
-											 (* TODO how to check distributivity? *)
-										   then let additiveIdentityIndex = getIndex (getGroupIdentity groupName groupElementList additionTable) groupElementList
-											      in let multiplicitiveInverseList = generateInverseList groupName (removeNth additiveIdentityIndex groupElementList) (List.map (removeNth additiveIdentityIndex) (removeNth additiveIdentityIndex multiplicationTable))
-											    	   in TypedFieldDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList)
-									     else raise(PlatoError("Field multiplication must be associative"))
-				    else raise(PlatoError("Group addition must be associative"))
+			   in if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable) && (isCommutative additionTable)
+		        then let additiveIdentity = getGroupIdentity groupName groupElementList additionTable
+						     in let additiveInverseList = generateInverseList groupName groupElementList additiveIdentity additionTable
+			              in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
+						           in if (isClosed groupElementList multiplicationTable) && (isAssociative groupElementList multiplicationTable) && (isCommutative multiplicationTable) && (distributes groupElementList additionTable multiplicationTable)
+										      then let additiveIdentityIndex = getIndex additiveIdentity groupElementList
+											         in let multiplicitiveInverseList = generateInverseList groupName (removeNth additiveIdentityIndex groupElementList)  (getGroupIdentity groupName groupElementList multiplicationTable) (List.map (removeNth additiveIdentityIndex) (removeNth additiveIdentityIndex multiplicationTable))
+											    	      in TypedFieldDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList, additiveIdentity)
+									        else raise(PlatoError("Field multiplication must be closed, associative, commutative and distribute over addition"))
+				    else raise(PlatoError("Field addition must be closed and associative"))
 			   
 let checkProgram = function
 	  Program(mainBlock, functionBlockList, extendedGroupBlockList) -> TypedProgram(checkMainBlock mainBlock, List.map checkFunctionBlock functionBlockList, List.map checkExtendedGroupBlock extendedGroupBlockList)	 
@@ -611,17 +657,18 @@ let createJavaExtendedGroupClass = function
 					[JavaStatement(JavaConstant(listTablePairToMap "additionTable" groupElements additionTable));
 					 JavaStatement(JavaConstant(listPairToMap "additiveInverseList" groupElements additiveInverseList));
 					 JavaStatement(JavaConstant(listTablePairToMap "multiplicationTable" groupElements multiplicationTable))]))]))
-	| TypedFieldDeclaration(groupName, groupElements, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList) -> 
+	| TypedFieldDeclaration(groupName, groupElements, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList, additiveIdentity) -> 
 		 (JavaClass(
 			groupName, 
 			"Fields", 
 			[JavaDefaultConstructor(
 				groupName,
 				JavaBlock(
-					[JavaStatement(JavaConstant(listTablePairToMap "additionTable" groupElements additionTable));
+					[JavaStatement(JavaAssignment("additiveIdentity", JavaConstant(JavaValue(JavaInt(additiveIdentity)))));
+					 JavaStatement(JavaConstant(listTablePairToMap "additionTable" groupElements additionTable));
 					 JavaStatement(JavaConstant(listPairToMap "additiveInverseList" groupElements additiveInverseList));
 					 JavaStatement(JavaConstant(listTablePairToMap "multiplicationTable" groupElements multiplicationTable));
-					 JavaStatement(JavaConstant(listPairToMap "multiplicitiveInverseList" groupElements multiplicitiveInverseList))]))]))
+					 JavaStatement(JavaConstant(listPairToMap "multiplicitiveInverseList" (List.filter (fun element -> element <> additiveIdentity) groupElements) multiplicitiveInverseList))]))]))
 
 let createJavaAst = function
 	  TypedProgram(typedMainBlock, typedFunctionBlockList, typedExtendedGroupBlockList) -> JavaClassList((createJavaMainClass typedFunctionBlockList typedMainBlock)::(List.map createJavaExtendedGroupClass typedExtendedGroupBlockList))
@@ -714,15 +761,21 @@ let generateJavaMethod logToJavaFile = function
 			(logToJavaFile ("public " ^ className ^ "()");
 			 generateJavaBlock logToJavaFile javaBlock)
 
+let removeFile fileName = 
+	if Sys.file_exists fileName
+	then Sys.remove fileName
+
 let generateJavaClass fileName = function
 	  JavaClass(javaClassName, javaSuperClassName, javaMethodList) -> 
 			let fullClassName = (if javaClassName = "Main" then (javaClassName ^ "_" ^ fileName) else javaClassName)
-			in let logToJavaFile = logToFileAppend false (fullClassName ^ ".java")
-				 in let extendsString = (if javaSuperClassName = "" then "" else ("extends " ^ javaSuperClassName))
-					  in logToJavaFile "import java.util.*;\n\n";
-						   logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
-				       ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
-			         logToJavaFile "}\n"
+			in let fullFileName = fullClassName ^ ".java"
+				 in removeFile fullFileName;
+			     let logToJavaFile = logToFileAppend false fullFileName
+				   in let extendsString = (if javaSuperClassName = "" then "" else ("extends " ^ javaSuperClassName))
+					    in logToJavaFile "import java.util.*;\n\n";
+						     logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
+				         ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
+			           logToJavaFile "}\n"
 			
 let generatePlatoCommonClass = 
 	let logToCommonClassFile = logToFileOverwrite false "PlatoCommon.java"
