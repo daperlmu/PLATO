@@ -17,14 +17,17 @@ type javaExpression =
 	| JavaConstant of javaValue
   | JavaVariable of string
   | JavaReturn of javaExpression
+  | JavaIf of javaExpression * javaBlock * javaElseIf list * javaElse
 	| JavaAssignment of string * javaExpression
 	| JavaDeclaration of javaType * string * javaExpression option
 	| JavaCall of string * string * javaExpression list
-
-type javaStatement =
+and javaElseIf = 
+	JavaElseIf of javaExpression * javaBlock
+and javaElse = 
+	JavaElse of javaBlock
+and javaStatement =
 	  JavaStatement of javaExpression
-
-type javaBlock =
+and javaBlock =
 	  JavaBlock of javaStatement list
 
 (* type javaFunctionHeader = 

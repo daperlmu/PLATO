@@ -20,6 +20,9 @@ rule token = parse
 	| "FIELD" { FIELD }
 	| "add" { ADD }
 	| "multiply" { MULTIPLY }
+	| "if" { IF }
+	| "elseif" { ELSEIF }
+	| "else" { ELSE }
 	| "main()" { MAIN_HEADER }
 	| '+' { PLUS }
 	| '-' { MINUS }

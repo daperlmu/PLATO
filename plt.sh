@@ -16,9 +16,9 @@ compile_result=`./platoc $source_file_path 2>&1`
 
 if ! [ $? -eq 0 ]
 then
-	echo "'$source_file_path' did NOT translate properly"
+	#echo "'$source_file_path' did NOT translate properly"
 	echo "TRANSLATION ERROR: $compile_result"
-	exit 1
+	exit 20
 fi
 
 echo "'$source_file_path' TRANSLATED successfully"
