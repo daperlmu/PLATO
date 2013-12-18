@@ -3,7 +3,7 @@
 %token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE VOID_TYPE
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
-%token PLUS MINUS TIMES DIVIDE PERCENT CARET AND OR 
+%token PLUS MINUS BACKSLASH TIMES DIVIDE PERCENT CARET AND OR 
 %token OVER PRINT RETURN GROUP RING FIELD ADD MULTIPLY
 %token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET
 %token <bool> BOOLEAN
@@ -14,7 +14,7 @@
 %left AND
 %left EQUAL
 %left LESS_THAN LESS_THAN_OR_EQUAL GREATER_THAN GREATER_THAN_OR_EQUAL
-%left PLUS MINUS
+%left PLUS MINUS BACKSLASH
 %left TIMES DIVIDE PERCENT
 %nonassoc NOT NEGATION
 %right CARET
@@ -35,18 +35,13 @@ platoFunctionType:
 	| VOID_TYPE { VoidType }
   | platoType { OtherType($1) }
 
-/*
-restOfCommaSeparatedExpressionList
-	*//* nothing *//* { [] }
-	| COMMA expression expressionCommaSeparatedList {$2::$3}
-
-commaSeparatedExpressionList
-	*//* nothing *//* { [] }
-	| expression restOfCommaSeparatedExpressionList {$1::$2}
+commaSeparatedExpressionNonemptyList:
+	expression { [$1] }
+	| commaSeparatedExpressionNonemptyList COMMA expression { $3::$1 }
 
 setLiteral:
-	OPEN_BRACE commaSeparatedExpressionList CLOSE_BRACE {$2}
-*/
+	OPEN_BRACE CLOSE_BRACE {SetLiteral([])}
+	| OPEN_BRACE commaSeparatedExpressionNonemptyList CLOSE_BRACE {SetLiteral(List.rev $2)}
 
 expression:
   | BOOLEAN { Boolean($1) }
@@ -58,6 +53,7 @@ expression:
 	| expression AND expression { Binop(And, $1, $3) }
 	| expression PLUS expression { Binop(Plus, $1, $3) }
 	| expression MINUS expression { Binop(Minus, $1, $3) }
+	| expression BACKSLASH expression { Binop(SetDifference, $1, $3) }
 	| expression TIMES expression { Binop(Times, $1, $3) }
 	| expression DIVIDE expression { Binop(Divide, $1, $3) }
 	| expression PERCENT expression { Binop(Mod, $1, $3) }
@@ -67,18 +63,9 @@ expression:
 	| expression GREATER_THAN expression { Binop(GreaterThan, $1, $3) }
 	| expression GREATER_THAN EQUAL expression %prec GREATER_THAN_OR_EQUAL { Binop(GreaterThanOrEqual, $1, $4) }
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
+	| setLiteral {$1}
 	| LPAREN expression RPAREN { $2 }
-	/*| OPEN_BRACE expression COMMA expression COMMA expression COMMA expression CLOSE_BRACE {SetLiteral([$2; $4; $6; $8])}*/
-	| OPEN_BRACE commaSeparatedExpressionList CLOSE_BRACE {SetLiteral(List.rev $2)}
 
-commaSeparatedExpressionNonemptyList:
-	| expression { [$1] }
-	| commaSeparatedExpressionNonemptyList COMMA expression { $3::$1 }
-
-commaSeparatedExpressionList:
-	| /*nothing*/ { [] }
-	| commaSeparatedExpressionNonemptyList { $1 }
-	
 statement:
   | PRINT expression SEMICOLON { Print($2) }
   | RETURN expression SEMICOLON { Return($2) }
@@ -88,7 +75,7 @@ statement:
 statementList:
   |/* empty */ { [] }
   | statementList statement { $2::$1 }
-	
+
 statementBlock: 
     OPEN_BRACE statementList CLOSE_BRACE { StatementBlock(List.rev $2) }
 

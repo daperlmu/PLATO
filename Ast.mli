@@ -14,10 +14,12 @@ type operator =
 	| GreaterThan
 	| GreaterThanOrEqual
 	| Equal
+	| SetDifference
 
 type platoType =
 	| BooleanType
 	| NumberType of string
+	| SetLiteralType of platoType
 
 type platoFunctionType =
 	| VoidType

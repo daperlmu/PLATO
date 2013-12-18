@@ -118,6 +118,7 @@ let canApplyNegation = function
 
 let canApplyPlus = function
 	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
 let canApplyMinus = function
@@ -127,13 +128,10 @@ let canApplyMinus = function
 (* TODO need to make this work for rings *)
 let canApplyTimes = function
 	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
 (* TODO need to make this work for fields *)
-let canApplyDivide = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
-	| _ -> false
-
 let canApplyDivide = function
 	| [NumberType("Integers"); NumberType("Integers")] -> true
 	| _ -> false
@@ -144,6 +142,7 @@ let canApplyMod = function
 
 let canApplyRaise = function
 	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
 let canApplyLessThan = function
@@ -166,6 +165,10 @@ let canApplyEqual = function
 	| [NumberType("Integers"); NumberType("Integers")] -> true
 	| _ -> false
 
+let canApplySetDifference = function
+	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
+	| _ -> false
+
 let canApplyOperator inputTypeList = function
 	| Not -> canApplyNot inputTypeList
 	| And -> canApplyAnd inputTypeList
@@ -182,6 +185,7 @@ let canApplyOperator inputTypeList = function
 	| GreaterThan -> canApplyGreaterThan inputTypeList
 	| GreaterThanOrEqual -> canApplyGreaterThanOrEqual inputTypeList
 	| Equal -> canApplyEqual inputTypeList
+	| SetDifference -> canApplySetDifference inputTypeList
 
 let getOperatorReturnType inputTypes = function
 	| Not -> BooleanType
@@ -220,6 +224,10 @@ let getOperatorReturnType inputTypes = function
 	| GreaterThan -> BooleanType
 	| GreaterThanOrEqual -> BooleanType
 	| Equal -> BooleanType
+	| SetDifference ->	
+		(match inputTypes with 
+		 | [inputType1; inputType2] -> inputType1
+		 | _ -> raise(PlatoError("Raise must have exactly have two input types")))
 
 let getOperatorCallClass inputTypeList = function
 	| Not -> "Booleans"
@@ -232,6 +240,7 @@ let getOperatorCallClass inputTypeList = function
   | Plus -> 
 		(match inputTypeList with
 		 | [NumberType(groupName); _] -> groupName
+		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Plus inputTypeList)) 
 	| Minus -> 
 		(match inputTypeList with
@@ -240,6 +249,7 @@ let getOperatorCallClass inputTypeList = function
 	| Times -> 
 		(match inputTypeList with
 		 | [NumberType(groupName); _] -> groupName
+		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Times inputTypeList)) 
 	| Divide ->
 		(match inputTypeList with
@@ -252,6 +262,7 @@ let getOperatorCallClass inputTypeList = function
 	| Raise ->
 		(match inputTypeList with
 		 | [NumberType(groupName); _] -> groupName
+		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Raise inputTypeList)) 
 	| LessThan -> 
 		(match inputTypeList with
@@ -272,6 +283,10 @@ let getOperatorCallClass inputTypeList = function
 	| Equal ->
 		(match inputTypeList with
 		 | [NumberType(groupName); _] -> groupName
+		 | _ -> raise(operatorException Equal inputTypeList)) 
+	| SetDifference ->
+		(match inputTypeList with
+		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Equal inputTypeList)) 
 
 let rec checkExpression environment = function
@@ -299,7 +314,7 @@ let rec checkExpression environment = function
 	| SetLiteral(setopExpressionList) ->
 		(let setExpressionList =  List.map (checkExpression environment) setopExpressionList
 		 in let expressionTypeList = List.map getExpressionType setExpressionList
-		 	in TypedSet(List.hd expressionTypeList, setExpressionList))
+		 	in TypedSet(SetLiteralType(List.hd expressionTypeList), setExpressionList))
 
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
@@ -406,6 +421,7 @@ let checkProgram = function
 let createJavaType = function
 	| BooleanType -> JavaBooleanType
 	| NumberType(_) -> JavaIntType
+	| SetLiteralType(_) -> JavaSetLiteralType
 
 let rec createJavaExpression = function
 	| TypedBoolean(booleanValue, _) -> JavaConstant(JavaValue(JavaBoolean(booleanValue)))
@@ -416,7 +432,7 @@ let rec createJavaExpression = function
 	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->
 		JavaCall(getOperatorCallClass [getExpressionType binaryExpression1; getExpressionType binaryExpression2] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
 	| TypedSet(setType, setExpressionList) ->
-		JavaCall("SetLiterals", "newHashSet", List.map createJavaExpression setExpressionList)
+		JavaCall("SetLiterals", "newPlatoSet", List.map createJavaExpression setExpressionList)
 
 let createJavaStatement = function
 	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
@@ -432,7 +448,7 @@ let createJavaMain = function
 	  TypedStatementBlock(statementList) -> JavaMain(JavaBlock(List.map createJavaStatement statementList))
 
 let createJavaMainClass typedFunctionBlockList = function 
-	| TypedMainBlock(typedStatementList) -> JavaClass("Main", "", [], (createJavaMain typedStatementList)::(List.map createJavaFunction typedFunctionBlockList))
+	| TypedMainBlock(typedStatementList) -> JavaClass("Main", "", (createJavaMain typedStatementList)::(List.map createJavaFunction typedFunctionBlockList))
 
 let listPairToMap gropuName keyList valueList = 
 		JavaMap(
@@ -451,7 +467,6 @@ let createJavaExtendedGroupClass = function
 		 (JavaClass(
 			groupName, 
 			"Groups", 
-			[],
 			[JavaDefaultConstructor(
 				groupName,
 				JavaBlock(
@@ -461,7 +476,6 @@ let createJavaExtendedGroupClass = function
 		 (JavaClass(
 			groupName, 
 			"Rings", 
-			[],
 			[JavaDefaultConstructor(
 				groupName,
 				JavaBlock(
@@ -472,7 +486,6 @@ let createJavaExtendedGroupClass = function
 		 (JavaClass(
 			groupName, 
 			"Fields", 
-			[],
 			[JavaDefaultConstructor(
 				groupName,
 				JavaBlock(
@@ -488,6 +501,7 @@ let createJavaAst = function
 let generateJavaType logToJavaFile = function
 	| JavaBooleanType -> logToJavaFile "boolean "
 	| JavaIntType -> logToJavaFile "int "
+	| JavaSetLiteralType -> logToJavaFile "PlatoSet<Object> "
 
 let generateJavaPrimitive logToJavaFile = function
 	| JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
@@ -571,19 +585,13 @@ let generateJavaMethod logToJavaFile = function
 			(logToJavaFile ("public " ^ className ^ "()");
 			 generateJavaBlock logToJavaFile javaBlock)
 
-let generateJavaInstanceVariable logToJavaFile = function
-	| JavaInstanceVariable(variableName, variableModifiers, variableValue) ->
-		generateJavaValue logToJavaFile variableValue;
-		logToJavaFile (variableModifiers ^ " " ^ variableName ^ ";\n")
-
 let generateJavaClass fileName = function
-	  JavaClass(javaClassName, javaSuperClassName, javaInstanceVariableList, javaMethodList) -> 
+	  JavaClass(javaClassName, javaSuperClassName, javaMethodList) -> 
 			let fullClassName = (if javaClassName = "Main" then (javaClassName ^ "_" ^ fileName) else javaClassName)
 			in let logToJavaFile = logToFileAppend false (fullClassName ^ ".java")
 				 in let extendsString = (if javaSuperClassName = "" then "" else ("extends " ^ javaSuperClassName))
 					  in logToJavaFile "import java.util.*;\n\n";
 						   logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
-						   ignore (List.map (generateJavaInstanceVariable logToJavaFile) javaInstanceVariableList);
 				       ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
 			         logToJavaFile "}\n"
 			
@@ -599,9 +607,13 @@ let generatePlatoIntegerClass =
 	let logToIntegerClassFile = logToFileOverwrite false "Integers.java"
 	in logToIntegerClassFile integerClassString
 
-let generatePlatoSetClass = 
+let generatePlatoSetLiteralsClass = 
 	let logToIntegerClassFile = logToFileOverwrite false "SetLiterals.java"
 	in logToIntegerClassFile setLiteralsClassString
+
+let generatePlatoSetClass = 
+	let logToIntegerClassFile = logToFileOverwrite false "PlatoSet.java"
+	in logToIntegerClassFile platoSetClassString
 
 let generatePlatoGroupClass = 
 	let logToGroupClassFile = logToFileOverwrite false "Groups.java"
@@ -614,13 +626,16 @@ let generatePlatoRingClass =
 let generatePlatoFieldClass = 
 	let logToFieldClassFile = logToFileOverwrite false "Fields.java"
 	in logToFieldClassFile fieldClassString	
-						
+
 let generatePlatoClasses = 
 	generatePlatoCommonClass;
 	generatePlatoBooleanClass;
 	generatePlatoIntegerClass;
+	generatePlatoSetLiteralsClass;
 	generatePlatoSetClass;
-	generatePlatoGroupClass		
+	generatePlatoGroupClass;	
+	generatePlatoRingClass;
+	generatePlatoFieldClass	
 			
 let generateJavaCode fileName = function
 	  JavaClassList(javaClassList) -> 

@@ -22,6 +22,7 @@ rule token = parse
 	| "main()" { MAIN_HEADER }
 	| '+' { PLUS }
 	| '-' { MINUS }
+	| '\\' { BACKSLASH }
 	| '*' { TIMES }
 	| '/' { DIVIDE }
 	| '%' { PERCENT }

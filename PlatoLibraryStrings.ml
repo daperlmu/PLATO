@@ -65,17 +65,19 @@ let integerClassString =
 		}"
 
 let setLiteralsClassString = 
-"import java.util.HashSet;
-public class SetLiterals {
-  public static HashSet<Object> newHashSet(Object ... objects) {
-  	HashSet<Object> returnable = new HashSet<Object>();
+"public class SetLiterals {
+  public static PlatoSet<Object> newPlatoSet(Object ... objects) {
+  	PlatoSet<Object> returnable = new PlatoSet<Object>();
   	for(Object object : objects) {
     	returnable.add(object);
     }
     return returnable;
   }
-  public static HashSet<Object> union(HashSet<Object> set1, HashSet<Object> set2) {
-  	HashSet<Object> returnable = new HashSet<Object>();
+  /**
+  * Union operator
+  */
+  public static PlatoSet<Object> plus(PlatoSet<Object> set1, PlatoSet<Object> set2) {
+  	PlatoSet<Object> returnable = new PlatoSet<Object>();
   	for(Object object : set1) {
     	returnable.add(object);
     }
@@ -84,8 +86,11 @@ public class SetLiterals {
     }
     return returnable;
   }
-  public static HashSet<Object> intersection(HashSet<Object> set1, HashSet<Object> set2) {
-  	HashSet<Object> returnable = new HashSet<Object>();
+  /**
+  * Intersection operator
+  */
+  public static PlatoSet<Object> raise(PlatoSet<Object> set1, PlatoSet<Object> set2) {
+  	PlatoSet<Object> returnable = new PlatoSet<Object>();
     for(Object object : set1) {
     	if(set2.contains(object)) {
     		returnable.add(object);
@@ -93,8 +98,20 @@ public class SetLiterals {
     }
     return returnable;
   }
-  public static HashSet<Object> difference(HashSet<Object> set1, HashSet<Object> set2) {
-  	HashSet<Object> returnable = new HashSet<Object>();
+  /**
+  * Cartesian product operator
+  */
+  public static PlatoSet<Object> times(PlatoSet<Object> set1, PlatoSet<Object> set2) {
+  	// TODO
+  	System.out.println(\"---Set intersection feature not yet implemented. Go to PlatoLibraryStrings.ml---\");
+  	PlatoSet<Object> returnable = new PlatoSet<Object>();
+    return returnable;
+  }
+  /**
+  * Set difference
+  */
+  public static PlatoSet<Object> setDifference(PlatoSet<Object> set1, PlatoSet<Object> set2) {
+  	PlatoSet<Object> returnable = new PlatoSet<Object>();
   	for(Object object : set1) {
     	returnable.add(object);
     }
@@ -102,6 +119,15 @@ public class SetLiterals {
     	returnable.remove(object);
     }
     return returnable;
+  }
+}"
+
+let platoSetClassString = 
+"import java.util.HashSet;
+public class PlatoSet<T> extends HashSet<T> {
+  public String toString() {
+  	String parentToString = super.toString();
+  	return \"{\"+parentToString.substring(1, parentToString.length()-1)+\"}\";
   }
 }"
 
@@ -139,5 +165,4 @@ let fieldClassString =
 	  public Integer divide(Integer number1, Integer number2) {\n
 		  return times(number1, Integer.parseInt(multiplicitiveInverseList.get(Integer.toString(number2))));\n
 	  }\n
-	}\n"	
-	
+	}\n"

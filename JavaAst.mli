@@ -3,6 +3,7 @@ open Sast;;
 type javaType =
 	| JavaBooleanType
 	| JavaIntType
+	| JavaSetLiteralType
 
 type javaPrimitive = 
 	| JavaBoolean of bool
@@ -29,16 +30,13 @@ type javaBlock =
 (* type javaFunctionHeader = 
 	  JavaFunctionHeader of javaFunctionType * string*)
 
-type javaInstanceVariable =
-	  JavaInstanceVariable of string * string * javaValue
-
 type javaMethod	=
 	  | JavaMain of javaBlock
 		| JavaDefaultConstructor of string * javaBlock
 	  | JavaFunction of Ast.functionHeader * javaBlock
 						
 type javaClass = 
-	  JavaClass of string * string * javaInstanceVariable list * javaMethod list
+	  JavaClass of string * string * javaMethod list
 		
 type javaClassList = 
 	  JavaClassList of javaClass list
