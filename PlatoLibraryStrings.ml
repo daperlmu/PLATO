@@ -160,9 +160,13 @@ let ringClassString =
 let fieldClassString = 
 	"import java.util.*;\n
 	public class Fields extends Rings {\n
+	  protected Integer additiveIdentity;\n
 	  protected Map<String, String> multiplicitiveInverseList;\n
 	  \n
 	  public Integer divide(Integer number1, Integer number2) {\n
+		  if (number2.equals(additiveIdentity)) {\n
+		    throw new ArithmeticException(\"Division by zero\");\n
+	    }\n
 		  return times(number1, Integer.parseInt(multiplicitiveInverseList.get(Integer.toString(number2))));\n
 	  }\n
 	}\n"
