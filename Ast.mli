@@ -33,7 +33,7 @@ type expression =
 	| Binop of operator * expression * expression
 	| SetLiteral of expression list
 
-type  statement =
+type statement =
 	| Print of expression
 	| Return of expression
   | Assignment of string * expression
@@ -58,10 +58,9 @@ type mainBlock =
 		
 type groupHeader = 
 	  GroupHeader of string			
-		
-(* TODO should be int set not int list *)	
+
 type groupBody =
-	  GroupBody of int list * functionBlock			
+	  GroupBody of expression * functionBlock			
 		
 type extendedGroupHeader = 
 	| RingHeader of string

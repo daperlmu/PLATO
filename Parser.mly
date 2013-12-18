@@ -126,7 +126,7 @@ groupHeader:
 		
 groupBody:
   /* TODO this needs a real set, make sure to update $4 when fixing this */
-     OPEN_BRACE CLOSE_BRACE SEMICOLON addFunctionBlock { GroupBody([0; 1; 2], $4) }
+     setLiteral SEMICOLON addFunctionBlock { GroupBody($1, $3) }
 
 groupBlock: 
     groupHeader OPEN_BRACE groupBody CLOSE_BRACE { GroupDeclaration($1, $3) } 

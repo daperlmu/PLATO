@@ -44,17 +44,21 @@ let rec evaluateSimpleExpression identifierName1 identifierName2 input1 input2 =
 		 else raise(undefinedVariableException variableName))
 	| Unop(unaryOperator, unopExpression) -> evaluateSimpleUnop (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 unopExpression) unaryOperator
 	| Binop(binaryOperator, binopExpression1, binopExpression2) -> evaluateSimpleBinop (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 binopExpression1) (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 binopExpression2) binaryOperator
-	| _ -> raise(PlatoError("Expressions in group add or multiply can only contain basic arithmetic operators"))
+	| _ -> raise(PlatoError("Expressions in groups', rings' or fields' add or multiply can only contain basic arithmetic operators"))
+
+let evaluateSimpleSet = function
+	| SetLiteral(expressionList) -> List.map (evaluateSimpleExpression "" "" 0 0) expressionList
+	| _ -> raise(PlatoError("A group, ring or field must have a set of elements")) 
 
 let evaluateSimpleStatement identifierName1 identifierName2 input1 input2 = function
 	| Return(javaExpression) -> 
 		evaluateSimpleExpression identifierName1 identifierName2 input1 input2 javaExpression
-	| _ -> raise(PlatoError("Statements in group add or multiply can only be returns"))
+	| _ -> raise(PlatoError("Statements in groups', rings' or fields' add or multiply can only be returns"))
 
 let evaluateSimpleBinaryFunction input1 input2 = function
 	| FunctionDeclaration({ returnType = OtherType(NumberType("Integers")); functionName = _; parameters = [Parameter(NumberType("Integers"), identifierName1); Parameter(NumberType("Integers"), identifierName2)]}, StatementBlock([javaStatement])) -> 
 		evaluateSimpleStatement identifierName1 identifierName2 input1 input2 javaStatement
-	| _ -> raise(PlatoError("Functions in groups can only be add or multiply"))
+	| _ -> raise(PlatoError("Functions in groups, rings or fields can only be add or multiply"))
 
 (* Convert Ast to Sast *)
 let canCast fromType toType = 
@@ -387,32 +391,35 @@ let generateInverseList groupName groupElements groupTable =
 let isAssociative groupTable = true
 						
 let checkExtendedGroupBlock = function
-	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) ->  
-			let additionTable = generateTable groupElements groupAdditionFunction
-			in if isAssociative additionTable
-		     then let additiveInverseList = generateInverseList groupName groupElements additionTable
-			        in TypedGroupDeclaration(groupName, groupElements, additionTable, additiveInverseList)
-				 else raise(PlatoError("Group addition must be associative"))
+	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) -> 
+		  let groupElementList = evaluateSimpleSet groupElements
+			in let additionTable = generateTable groupElementList groupAdditionFunction
+				 in if isAssociative additionTable
+				    then let additiveInverseList = generateInverseList groupName groupElementList additionTable
+			  	        in TypedGroupDeclaration(groupName, groupElementList, additionTable, additiveInverseList)
+			      else raise(PlatoError("Group addition must be associative"))
    | ExtendedGroupDeclaration(RingHeader(groupName), ExtendedGroupBody(GroupBody(groupElements, groupAdditionFunction), extendedGroupMultiplicationFunction)) ->
-		let additionTable = generateTable groupElements groupAdditionFunction
-			in if isAssociative additionTable
-		     then let additiveInverseList = generateInverseList groupName groupElements additionTable
-			        in let multiplicationTable = generateTable groupElements extendedGroupMultiplicationFunction
-						     in if isAssociative multiplicationTable
-									  then TypedRingDeclaration(groupName, groupElements, additionTable, additiveInverseList, multiplicationTable)
-				 	  			  else raise(PlatoError("Ring multiplication must be associative"))
-				 else raise(PlatoError("Group addition must be associative"))
+		let groupElementList = evaluateSimpleSet groupElements
+		in let additionTable = generateTable groupElementList groupAdditionFunction
+			 in if isAssociative additionTable
+		      then let additiveInverseList = generateInverseList groupName groupElementList additionTable
+			         in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
+					  	    in if isAssociative multiplicationTable
+						    	   then TypedRingDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable)
+				 	  			   else raise(PlatoError("Ring multiplication must be associative"))
+				  else raise(PlatoError("Group addition must be associative"))
 	 | ExtendedGroupDeclaration(FieldHeader(groupName), ExtendedGroupBody(GroupBody(groupElements, groupAdditionFunction), extendedGroupMultiplicationFunction)) ->  
-			let additionTable = generateTable groupElements groupAdditionFunction
-			in if isAssociative additionTable
-		     then let additiveInverseList = generateInverseList groupName groupElements additionTable
-			        in let multiplicationTable = generateTable groupElements extendedGroupMultiplicationFunction
-						     in if isAssociative multiplicationTable
-								    (* TODO should not look for inverse of additive identity *)
-										then let multiplicitiveInverseList = generateInverseList groupName groupElements multiplicationTable
-												 in TypedFieldDeclaration(groupName, groupElements, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList)
-									  else raise(PlatoError("Field multiplication must be associative"))
-				 else raise(PlatoError("Group addition must be associative"))
+			let groupElementList = evaluateSimpleSet groupElements
+			in let additionTable = generateTable groupElementList groupAdditionFunction
+			   in if isAssociative additionTable
+		        then let additiveInverseList = generateInverseList groupName groupElementList additionTable
+			           in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
+						        in if isAssociative multiplicationTable
+								       (* TODO should not look for inverse of additive identity *)
+										   then let multiplicitiveInverseList = generateInverseList groupName groupElementList multiplicationTable
+											    	in TypedFieldDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList)
+									     else raise(PlatoError("Field multiplication must be associative"))
+				    else raise(PlatoError("Group addition must be associative"))
 			   
 let checkProgram = function
 	  Program(mainBlock, functionBlockList, extendedGroupBlockList) -> TypedProgram(checkMainBlock mainBlock, List.map checkFunctionBlock functionBlockList, List.map checkExtendedGroupBlock extendedGroupBlockList)	 

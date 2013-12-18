@@ -6,7 +6,7 @@ main() {
   PRINT 2 - 2 - 2;
 }
 GROUP z3 {
-  {};
+  {0, 1, 2};
   INTEGER add(INTEGER n1, INTEGER n2) {
     RETURN (n1 + n2) % 3;
   }

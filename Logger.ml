@@ -77,9 +77,6 @@ let logStatementBlockAst = function
 let logMainBlockAst = function
 	  MainBlock(statementBlock) -> logStringToAst "MainBlock"; logStatementBlockAst statementBlock
 
-(* TODO this should log a set not a list *)
-let logSetAst set = logListToAst (List.map string_of_int set) 
-
 let logParameterAst = function
 	| Parameter(parameterType, parameterName) -> logListToAst ["parameter"; parameterName; "of type"; typeToString parameterType]
 
@@ -102,13 +99,13 @@ let logExtendedGroupHeaderAst = function
 let logGroupBodyAst = function
 	| GroupBody(elements, addFunctionBlock) -> 
 		logStringToAst "Elements ";
-		logSetAst elements;
+		logExpressionAst elements;
 		logFunctionBlockAst addFunctionBlock
 		
 let logExtendedGroupBodyAst = function
 	| ExtendedGroupBody(GroupBody(elements, addFunctionBlock), multiplyFunctionBlock) -> 
 		logStringToAst "Elements ";
-		logSetAst elements;
+		logExpressionAst elements;
 		logFunctionBlockAst addFunctionBlock;
 		logFunctionBlockAst multiplyFunctionBlock
 		
