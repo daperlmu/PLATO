@@ -2,6 +2,7 @@
 
 rule token = parse
     [' ' '\t' '\r' '\n'] { token lexbuf }
+    | "/*"     { comment lexbuf }
 	| "BOOLEAN" { BOOLEAN_TYPE }
 	| "INTEGER" { INTEGER_TYPE }
 	| "NUMBER" { NUMBER_TYPE }
@@ -42,4 +43,9 @@ rule token = parse
 	| '0' { NUMBER(0) }
   | ['1'-'9']['0'-'9']* as number { NUMBER(int_of_string number) }
 	| ['a'-'z' 'A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* as identifier { IDENTIFIER(identifier) }
-  | eof { EOF } 
+  | eof { EOF }
+  | _ as char { raise (Failure("illegal character " ^ Char.escaped char)) }
+
+ and comment = parse
+  "*/" { token lexbuf }
+| _    { comment lexbuf }
