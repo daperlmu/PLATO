@@ -18,3 +18,6 @@ In order to dirty compile a *.plt file, to test whether it compiles successfully
 
 In order to dirty compile a *.plt file and run it, simply do:
 	./plt.sh path_to_plt_file dirty run
+
+For tests that are supposed to fail, your .result file should be similar to the following, where we prepend "TRANSLATION ERROR:" to the error string
+	TRANSLATION ERROR: Fatal error: exception PLATO.PlatoError("Function:...")

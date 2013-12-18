@@ -20,6 +20,12 @@ type platoType =
 	| BooleanType
 	| NumberType of string
 	| SetLiteralType of platoType
+	| NeutralType
+
+type platoQuantifier =
+	| WhichQuantifier
+	| SomeQuantifier
+	| AllQuantifier
 
 type platoFunctionType =
 	| VoidType
