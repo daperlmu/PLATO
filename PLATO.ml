@@ -129,15 +129,15 @@ let canApplyMinus = function
 	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
 	| _ -> false
 
-(* TODO need to make this work for rings *)
+(* TODO need to make this work only for rings *)
 let canApplyTimes = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
-(* TODO need to make this work for fields *)
+(* TODO need to make this work only for fields *)
 let canApplyDivide = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
 	| _ -> false
 
 let canApplyMod = function
@@ -387,69 +387,95 @@ let generateInverseList groupName groupElements groupTable =
 	let groupIdentity = (getGroupIdentity groupName groupElements groupTable)
 	in generateInverseListHelper groupName groupElements groupElements groupIdentity groupTable []
 
-let rec getIndexHelper element startIndex = function
-	| [] -> raise Not_found
-	| head::tail -> if head == element 
-                  then startIndex
-									else getIndexHelper element (startIndex + 1) tail
-
-let getIndex element list =  getIndexHelper element 0 list
-	
-let rec generateLightsTable rowElements groupElements groupTable tableSoFar =
-	match rowElements with
-	| [] -> List.rev tableSoFar
-	| head::tail -> 
-		try let headIndex = getIndex head groupElements
-				in generateLightsTable tail groupElements groupTable ((List.nth groupTable headIndex)::tableSoFar)
-		with Not_found -> raise(PlatoError("Error while constructing associtivity tables"))
-
-let rec rowsMatch table1 rows1 table2 rows2 =
-	match rows1 with 
-	| [] -> true
-	| head::tail -> let table2Index = getIndex head rows2
-	                in if List.hd table1 = List.nth table2 table2Index
-	                   then (rowsMatch (List.tl table1) tail table2 rows2)
-									   else false
 
 let print_table table = 
 	ignore (List.map (fun intList -> ignore (List.map print_int intList); print_string "\n") table)
-
-(* TODO test a non-commutative group *)
-let rec isAssociative groupElements groupTable = function
+																																
+let checkAssociative a b c groupTable = 
+	let groupTimes = fun a b groupTable -> List.nth (List.nth groupTable a) b
+	in let starResult = groupTimes (groupTimes a b groupTable) c groupTable
+	   in let circleResult = groupTimes a (groupTimes b c groupTable) groupTable
+		    in starResult = circleResult
+						
+let rec checkAssociativeList aList b c groupTable	=
+	match aList with
 	| [] -> true
-	| head::tail -> let lightsTable = generateLightsTable head groupElements groupTable [] 
-		              in if rowsMatch groupTable groupElements lightsTable head
-	                	 then isAssociative groupElements groupTable tail
-									   else false 
-				
+	| head::tail -> if checkAssociative head b c groupTable 
+	                then checkAssociativeList tail b c groupTable	
+		              else false
+								
+let rec checkAssociativeListPair aList bList c groupTable =	
+	match bList with
+	| [] -> true
+	| head::tail -> if checkAssociativeList aList head c groupTable 
+	                then checkAssociativeListPair aList tail c groupTable	
+		              else false		
+		
+let rec checkAssociativeListTriple aList bList cList groupTable =	
+	match cList with
+	| [] -> true
+	| head::tail -> if checkAssociativeListPair aList bList head groupTable 
+	                then checkAssociativeListTriple aList bList tail groupTable	
+		              else false				
+					
+let isAssociative groupElements groupTable = checkAssociativeListTriple groupElements groupElements groupElements groupTable 				
+
+let rec getIndexHelper element list startIndex =
+	match list with 
+	| [] -> raise Not_found
+	| head::tail -> 
+		if element = head 
+	  then startIndex
+	  else getIndexHelper element tail (startIndex + 1)
+
+let getIndex element list = getIndexHelper element list 0												
+						
+let rec removeNthHelper n list acc = 
+	if n = 0 
+	then (List.rev acc) @ (List.tl list)
+	else removeNthHelper (n - 1) (List.tl list) ((List.hd list)::acc)					
+						
+let removeNth n list = removeNthHelper n list []						
+						
+let rec isCommutative table =
+	match table with 
+	| [] -> true
+	| _ -> if List.hd table = List.map List.hd table
+	       then isCommutative (List.tl (List.map List.tl table))
+				 else false						
+						
+(* TODO check commutativity of rings and fields *)
+(* TODO how to check closure? *)				
 let checkExtendedGroupBlock = function
 	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) -> 
 		  let groupElementList = evaluateSimpleSet groupElements
 			in let additionTable = generateTable groupElementList groupAdditionFunction
-				 in if isAssociative groupElementList additionTable additionTable
+				 in if isAssociative groupElementList additionTable
 				    then let additiveInverseList = generateInverseList groupName groupElementList additionTable
 			  	        in TypedGroupDeclaration(groupName, groupElementList, additionTable, additiveInverseList)
 			      else raise(PlatoError("Group addition must be associative"))
    | ExtendedGroupDeclaration(RingHeader(groupName), ExtendedGroupBody(GroupBody(groupElements, groupAdditionFunction), extendedGroupMultiplicationFunction)) ->
 		let groupElementList = evaluateSimpleSet groupElements
 		in let additionTable = generateTable groupElementList groupAdditionFunction
-			 in if isAssociative groupElementList additionTable additionTable
+			 in if (isAssociative groupElementList additionTable) && (isCommutative additionTable)
 		      then let additiveInverseList = generateInverseList groupName groupElementList additionTable
 			         in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
-					  	    in if isAssociative groupElementList multiplicationTable multiplicationTable
+					  	    in if isAssociative groupElementList multiplicationTable
 						    	   then TypedRingDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable)
 				 	  			   else raise(PlatoError("Ring multiplication must be associative"))
 				  else raise(PlatoError("Group addition must be associative"))
 	 | ExtendedGroupDeclaration(FieldHeader(groupName), ExtendedGroupBody(GroupBody(groupElements, groupAdditionFunction), extendedGroupMultiplicationFunction)) ->  
 			let groupElementList = evaluateSimpleSet groupElements
 			in let additionTable = generateTable groupElementList groupAdditionFunction
-			   in if isAssociative groupElementList additionTable additionTable
+			   in if (isAssociative groupElementList additionTable) && (isCommutative additionTable)
 		        then let additiveInverseList = generateInverseList groupName groupElementList additionTable
 			           in let multiplicationTable = generateTable groupElementList extendedGroupMultiplicationFunction
-						        in if isAssociative groupElementList multiplicationTable multiplicationTable
+						        in if (isAssociative groupElementList multiplicationTable) && (isCommutative multiplicationTable)
 								       (* TODO should not look for inverse of additive identity *)
-										   then let multiplicitiveInverseList = generateInverseList groupName groupElementList multiplicationTable
-											    	in TypedFieldDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList)
+											 (* TODO how to check distributivity? *)
+										   then let additiveIdentityIndex = getIndex (getGroupIdentity groupName groupElementList additionTable) groupElementList
+											      in let multiplicitiveInverseList = generateInverseList groupName (removeNth additiveIdentityIndex groupElementList) (List.map (removeNth additiveIdentityIndex) (removeNth additiveIdentityIndex multiplicationTable))
+											    	   in TypedFieldDeclaration(groupName, groupElementList, additionTable, additiveInverseList, multiplicationTable, multiplicitiveInverseList)
 									     else raise(PlatoError("Field multiplication must be associative"))
 				    else raise(PlatoError("Group addition must be associative"))
 			   
