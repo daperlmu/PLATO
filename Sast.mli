@@ -14,10 +14,15 @@ type typedExpression =
 type typedStatement = 
 	| TypedPrint of typedExpression
 	| TypedReturn of typedExpression
+	| TypedIf of typedExpression * typedStatementBlock * typedElseIfBlock list * typedElseBlock
+	| TypedIfNoElse of typedExpression * typedStatementBlock * typedElseIfBlock list
 	| TypedAssignment of variableDeclaration * typedExpression      
 	| TypedDeclaration of variableDeclaration * typedExpression
-
-type typedStatementBlock = 
+and typedElseIfBlock = 
+	TypedElseIfBlock of typedExpression * typedStatementBlock
+and typedElseBlock = 
+	TypedElseBlock of typedStatementBlock
+and typedStatementBlock = 
 	  TypedStatementBlock of typedStatement list
 
 type typedParameter = 

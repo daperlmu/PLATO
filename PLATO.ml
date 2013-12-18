@@ -374,12 +374,10 @@ let checkVoidFunction = function
 	FunctionDeclaration(functionHeader, statementBlock) ->
 		let returnStmtsInFunctionBlock = getReturnStmts statementBlock
 			in let functionEnvironment = emptyEnviroment 
-				in if (List.length returnStmtsInFunctionBlock)=0
-			  		then 
-			  			(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
-						(*- check to make sure parameter identifiers are not used in declaration statements within the function block*)
+			   in if (List.length returnStmtsInFunctionBlock)=0
+			  	  then (ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
 			  			 TypedFunctionDeclaration(functionHeader, checkStatementBlock functionEnvironment statementBlock))
-			  		else raise(voidFunctionHasReturnException functionHeader.functionName)
+			  	  else raise(voidFunctionHasReturnException functionHeader.functionName)
 
 let getLastStmtInBlock = function
 	StatementBlock(statementList) -> List.hd (List.rev statementList)
@@ -393,20 +391,34 @@ let checkFunctionBlock = function
 		  						let functionEnvironment = emptyEnviroment
 		  							in let returnStmtsInFunctionBlock = getReturnStmts statementBlock
 		  								in if (List.length returnStmtsInFunctionBlock)=0
-		  									then raise(missingReturnStmtException functionHeader.functionName (Logger.typeToString returnType))
-		  									else
-	  											(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
-		  											(* - check to make sure parameter identifiers are not used in declaration statements within the function block*)
-			  										let checkedStatementBlock = checkStatementBlock functionEnvironment statementBlock
-					  									in let lastStmt = getLastStmtInBlock statementBlock
-					  										in let lastStmtType = getExpressionType (extractExpressionFromStmt functionEnvironment lastStmt)
-					  											in if not (lastStmtType=returnType)
-					  												then raise(incompatibleTypesReturnStmt functionHeader.functionName (Logger.typeToString returnType) (Logger.typeToString lastStmtType))
-					  												else TypedFunctionDeclaration(functionHeader, checkedStatementBlock))
-					  												(*  - check if the returned expression can be cast up to the function's expected return type
-					  													- need to check all return statements in the function to make sure they are type compatible with the expected return type
-					  													- Check if last statement is actually a return statement
-					  												- check for unreachable code *)
+	  									then raise(missingReturnStmtException functionHeader.functionName (Logger.typeToString returnType))
+	  									else
+  											(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
+		  										let checkedStatementBlock = checkStatementBlock functionEnvironment statementBlock
+		  										(* 
+													ALGORITHM:
+													If there is an else block:
+														if it has a return statement then:
+															If the return statement in the else block is not the last statement in the else block, then raise(unreachable statement exception)
+															-A return statement at the end of the function is not necessary iff:
+																- For all other if and elseif blocks, there is a return statement at the end of every block respectively.
+																	- If for any of the if or elseif blocks, the return statement is not the last statement, then raise(unreachable statement exception)
+
+															If you reach this point, no exceptions have been raised, meaning the function safely returns a value no matter what.
+
+														else if it does not have a return statement then:
+															- Run through the current function validation code.
+
+		  										 *)
+				  								in let lastStmt = getLastStmtInBlock statementBlock
+				  								   in let lastStmtType = getExpressionType (extractExpressionFromStmt functionEnvironment lastStmt)
+				  									  in if not (lastStmtType=returnType)
+				  										 then raise(incompatibleTypesReturnStmt functionHeader.functionName (Logger.typeToString returnType) (Logger.typeToString lastStmtType))
+				  										 else TypedFunctionDeclaration(functionHeader, checkedStatementBlock))
+				  												(*  - check if the returned expression can be cast up to the function's expected return type
+				  													- need to check all return statements in the function to make sure they are type compatible with the expected return type
+				  													- Check if last statement is actually a return statement
+				  												- check for unreachable code *)
 
 		  					)
 
