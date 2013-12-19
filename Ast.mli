@@ -3,7 +3,7 @@ type operator =
 	| And
 	| Or
 	| Negation
-  | Plus 
+	| Plus 
 	| Minus
 	| Times
 	| Divide
@@ -15,6 +15,7 @@ type operator =
 	| GreaterThanOrEqual
 	| Equal
 	| SetDifference
+	| VectorAccess
 
 type platoType =
 	| BooleanType

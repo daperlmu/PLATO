@@ -1,67 +1,66 @@
 (* TODO casting here *)
 let commonClassString = 
-	"public class PlatoCommon { \n
-	  public Object cast(Object object, String fromType, String toType) { \n
-		  if (fromType.equals(toType)) { \n
+	"public class PlatoCommon { 
+	  public Object cast(Object object, String fromType, String toType) { 
+		  if (fromType.equals(toType)) { 
 				return object;
-			} else { \n
+			} else { 
 			  return null
-			}\n
-		}\n
+			}
+		}
 	}"
 
-
 let booleanClassString = 
-		"public class Booleans { \n
-		  public Boolean not(Boolean bool) {\n
-			  return !bool;\n
-			}\n
-		  public Boolean or(Boolean bool1, Boolean bool2) {\n
-			  return bool1 || bool2;\n
-			}\n
-			public Boolean and(Boolean bool1, Boolean bool2) {\n
-			  return bool1 && bool2;\n
-			}\n
+		"public class Booleans { 
+		  public Boolean not(Object bool) {
+			  return !((Boolean)bool);
+			}
+		  public Boolean or(Object bool1, Object bool2) {
+			  return ((Boolean)bool1) || ((Boolean)bool2);
+			}
+			public Boolean and(Object bool1, Object bool2) {
+			  return ((Boolean)bool1) && ((Boolean)bool2);
+			}
 		}"
 
 let integerClassString = 
-		"public class Integers { \n
-		  public Integer negation(Integer integer) {\n
-			  return -integer;\n
-			}\n
-		  public Integer plus(Integer integer1, Integer integer2) {\n
-			  return integer1 + integer2;\n
-			}\n
-		  public Integer minus(Integer integer1, Integer integer2) {\n
-			  return integer1 - integer2;\n
-			}\n
-		  public Integer times(Integer integer1, Integer integer2) {\n
-			  return integer1 * integer2;\n
-			}\n
-		  public Integer divide(Integer integer1, Integer integer2) {\n
-			  return integer1 / integer2;\n
-			}\n
-		  public Integer mod(Integer integer1, Integer integer2) {\n
-			  return integer1 % integer2;\n
-			}\n
-		  public Integer raise(Integer integer1, Integer integer2) {\n
-			  return (int) Math.pow(integer1, integer2);\n
-			}\n
-		  public Boolean lessThan(Integer integer1, Integer integer2) {\n
-			  return integer1 < integer2;\n
-			}\n
-		  public Boolean lessThanOrEqual(Integer integer1, Integer integer2) {\n
-			  return integer1 <= integer2;\n
-			}\n
-		  public Boolean greaterThan(Integer integer1, Integer integer2) {\n
-			  return integer1 > integer2;\n
-			}\n
-		  public Boolean greaterThanOrEqual(Integer integer1, Integer integer2) {\n
-			  return integer1 >= integer2;\n
-			}\n
-		  public Boolean equal(Integer integer1, Integer integer2) {\n
-			  return integer1 == integer2;\n
-			}\n
+		"public class Integers { 
+		  public Integer negation(Integer integer) {
+			  return -integer;
+			}
+		  public Integer plus(Object integer1, Object integer2) {
+			  return ((Integer)integer1) + ((Integer)integer2);
+			}
+		  public Integer minus(Object integer1, Object integer2) {
+			  return ((Integer)integer1) - ((Integer)integer2);
+			}
+		  public Integer times(Object integer1, Object integer2) {
+			  return ((Integer)integer1) * ((Integer)integer2);
+			}
+		  public Integer divide(Object integer1, Object integer2) {
+			  return ((Integer)integer1) / ((Integer)integer2);
+			}
+		  public Integer mod(Object integer1, Object integer2) {
+			  return ((Integer)integer1) % ((Integer)integer2);
+			}
+		  public Integer raise(Object integer1, Object integer2) {
+			  return (int) Math.pow((Integer)integer1, (Integer)integer2);
+			}
+		  public Boolean lessThan(Object integer1, Object integer2) {
+			  return ((Integer)integer1) < ((Integer)integer2);
+			}
+		  public Boolean lessThanOrEqual(Object integer1, Object integer2) {
+			  return ((Integer)integer1) <= ((Integer)integer2);
+			}
+		  public Boolean greaterThan(Object integer1, Object integer2) {
+			  return ((Integer)integer1) > ((Integer)integer2);
+			}
+		  public Boolean greaterThanOrEqual(Object integer1, Object integer2) {
+			  return ((Integer)integer1) >= ((Integer)integer2);
+			}
+		  public Boolean equal(Object integer1, Object integer2) {
+			  return ((Integer)integer1) == ((Integer)integer2);
+			}
 		}"
 
 let setLiteralsClassString = 
@@ -140,6 +139,9 @@ let vectorLiteralsClassString =
     }
     return returnable;
   }
+  public static Object vectorAccess(PlatoVector<Object> vec, Integer index) {
+  	return vec.get(index-1);
+  }
 }"
 
 let platoVectorClassString = 
@@ -148,41 +150,41 @@ public class PlatoVector<T> extends ArrayList<T> {
 }"
 
 let groupClassString =
-	"import java.util.*;\n
-  \n
-	public class Groups {\n
-	  protected Map<String, String> additionTable;\n
-	  protected Map<String, String> additiveInverseList;\n
-	  \n
-	  public Integer plus(Integer number1, Integer number2) {\n
-	    return Integer.parseInt(additionTable.get(Integer.toString(number1) + \",\" + Integer.toString(number2)));\n 
-	  }\n
-	  \n
-	  public Integer minus(Integer number1, Integer number2) {\n
-		  return plus(number1, Integer.parseInt(additiveInverseList.get(Integer.toString(number2))));\n
-	  }\n
-	}\n"
+	"import java.util.*;
+  
+	public class Groups {
+	  protected Map<String, String> additionTable;
+	  protected Map<String, String> additiveInverseList;
+	  
+	  public Integer plus(Object number1, Object number2) {
+	    return Integer.parseInt(additionTable.get(Integer.toString((Integer)number1) + \",\" + Integer.toString((Integer)number2))); 
+	  }
+	  
+	  public Integer minus(Integer number1, Integer number2) {
+		  return plus(number1, Integer.parseInt(additiveInverseList.get(Integer.toString(number2))));
+	  }
+	}"
 
 let ringClassString = 
-	"import java.util.*;\n
-	public class Rings extends Groups {\n
-	  protected Map<String, String> multiplicationTable;\n
-	  \n
-	  public Integer times(Integer number1, Integer number2) {\n
-	    return Integer.parseInt(multiplicationTable.get(Integer.toString(number1) + \",\" + Integer.toString(number2)));\n 
-	  }\n
-	}\n"
-	
+	"import java.util.*;
+	public class Rings extends Groups {
+	  protected Map<String, String> multiplicationTable;
+	  
+	  public Integer times(Object number1, Object number2) {
+	    return Integer.parseInt(multiplicationTable.get(Integer.toString((Integer)number1) + \",\" + Integer.toString((Integer)number2))); 
+	  }
+	}"
+
 let fieldClassString = 
-	"import java.util.*;\n
-	public class Fields extends Rings {\n
-	  protected Integer additiveIdentity;\n
-	  protected Map<String, String> multiplicitiveInverseList;\n
-	  \n
-	  public Integer divide(Integer number1, Integer number2) {\n
-		  if (number2.equals(additiveIdentity)) {\n
-		    throw new ArithmeticException(\"Division by zero\");\n
-	    }\n
-		  return times(number1, Integer.parseInt(multiplicitiveInverseList.get(Integer.toString(number2))));\n
-	  }\n
-	}\n"
+	"import java.util.*;
+	public class Fields extends Rings {
+	  protected Integer additiveIdentity;
+	  protected Map<String, String> multiplicitiveInverseList;
+	  
+	  public Integer divide(Object number1, Object number2) {
+		  if (number2.equals(additiveIdentity)) {
+		    throw new ArithmeticException(\"Division by zero\");
+	    }
+		  return times((Integer)number1, Integer.parseInt(multiplicitiveInverseList.get(Integer.toString((Integer)number2))));
+	  }
+	}"

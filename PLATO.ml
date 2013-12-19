@@ -113,7 +113,7 @@ let convertParamToVarDec = function
 let getExpressionType = function
 	| TypedBoolean(_, expressionType) -> expressionType
 	| TypedNumber(_, expressionType) -> expressionType
-  | TypedIdentifier(_, expressionType) -> expressionType
+	| TypedIdentifier(_, expressionType) -> expressionType
 	| TypedUnop(_, expressionType, _) -> expressionType
 	| TypedBinop(_, expressionType, _, _) -> expressionType
 	| TypedSet(expressionType, _) -> expressionType
@@ -191,6 +191,10 @@ let canApplySetDifference = function
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
+let canApplyVectorAccess = function
+	| [VectorLiteralType(_); arg2] -> (canCast arg2 (NumberType("field", "Integers")))
+	| _ -> false
+
 let canApplyOperator inputTypeList = function
 	| Not -> canApplyNot inputTypeList
 	| And -> canApplyAnd inputTypeList
@@ -208,6 +212,7 @@ let canApplyOperator inputTypeList = function
 	| GreaterThanOrEqual -> canApplyGreaterThanOrEqual inputTypeList
 	| Equal -> canApplyEqual inputTypeList
 	| SetDifference -> canApplySetDifference inputTypeList
+	| VectorAccess -> canApplyVectorAccess inputTypeList
 
 let getOperatorReturnType inputTypes = function
 	| Not -> BooleanType
@@ -217,7 +222,7 @@ let getOperatorReturnType inputTypes = function
 		(match inputTypes with 
 		 | [inputType] -> inputType
 		 | _ -> raise(PlatoError("Negation must have exactly have one input type")))
-  | Plus -> 
+	| Plus -> 
 	  (match inputTypes with 
 		 | [inputType1; inputTyp2] -> inputType1
 		 | _ -> raise(PlatoError("Plus must have exactly have two input types")))
@@ -249,7 +254,11 @@ let getOperatorReturnType inputTypes = function
 	| SetDifference ->	
 		(match inputTypes with 
 		 | [inputType1; inputType2] -> inputType1
-		 | _ -> raise(PlatoError("Raise must have exactly have two input types")))
+		 | _ -> raise(PlatoError("Set difference must have exactly have two input types")))
+	| VectorAccess ->
+		(match inputTypes with 
+		 | [VectorLiteralType(arg1); _] -> arg1
+		 | _ -> raise(PlatoError("VectorAccess must have exactly have two input types, and the first type must be a VectorLiteral")))
 
 let getOperatorCallClass inputTypeList = function
 	| Not -> "Booleans"
@@ -309,12 +318,16 @@ let getOperatorCallClass inputTypeList = function
 	| SetDifference ->
 		(match inputTypeList with
 		 | [SetLiteralType(_); _] -> "SetLiterals"
+		 | _ -> raise(operatorException Equal inputTypeList))
+	| VectorAccess ->
+		(match inputTypeList with
+		 | [VectorLiteralType(_); _] -> ("VectorLiterals")
 		 | _ -> raise(operatorException Equal inputTypeList)) 
 
 let rec checkExpression environment = function
 	| Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
 	| Number(numberValue) -> TypedNumber(numberValue, NumberType("field", "Integers"))
-  | Identifier(variableName) -> 
+	| Identifier(variableName) -> 
 		  let variableDeclaration = 
 				try findVariable environment.scope variableName 
 			  with Not_found -> raise (undeclaredVariableException variableName)
@@ -643,7 +656,7 @@ let createJavaType = function
 let rec createJavaExpression = function
 	| TypedBoolean(booleanValue, _) -> JavaConstant(JavaValue(JavaBoolean(booleanValue)))
 	| TypedNumber(numberValue, _)-> JavaConstant(JavaValue(JavaInt(numberValue)))
-  | TypedIdentifier(variableName, _) -> JavaVariable(variableName)
+	| TypedIdentifier(variableName, _) -> JavaVariable(variableName)
 	| TypedUnop(unaryOperator, operatorType, unopExpression) ->
 		JavaCall(getOperatorCallClass [getExpressionType unopExpression] unaryOperator, operatorToString unaryOperator, [createJavaExpression unopExpression])
 	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->

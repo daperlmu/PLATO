@@ -20,6 +20,7 @@ let operatorToString = function
 	| GreaterThanOrEqual -> "greaterThanOrEqual"
 	| Equal ->  "equal"
 	| SetDifference ->  "setDifference"
+	| VectorAccess -> "vectorAccess"
 
 let rec typeToString = function
 	| BooleanType -> "Booleans"

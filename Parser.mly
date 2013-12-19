@@ -55,14 +55,17 @@ vectorLiteral:
 	| OPEN_BRACKET commaSeparatedExpressionNonemptyList CLOSE_BRACKET {VectorLiteral(List.rev $2)}
 
 quantifier:
-	WHICH_QUANTIFIER {WhichQuantifier}
 	| SOME_QUANTIFIER {SomeQuantifier}
 	| ALL_QUANTIFIER {AllQuantifier}
+/*
+	WHICH_QUANTIFIER {WhichQuantifier}
+*/
 
 expression:
   | BOOLEAN { Boolean($1) }
 	|	NUMBER { Number($1) }
 	| IDENTIFIER { Identifier($1) }
+	| IDENTIFIER OPEN_BRACKET expression CLOSE_BRACKET { Binop(VectorAccess, Identifier($1), $3) }
 	| NOT expression { Unop(Not, $2) }
 	| MINUS expression %prec NEGATION	{ Unop(Negation, $2) }
   | expression OR expression { Binop(Or, $1, $3) }
