@@ -1,0 +1,30 @@
+main() {
+  VECTOR<BOOLEAN> myVector := NOT [TRUE, FALSE, TRUE];
+  VECTOR<INTEGER> myVector2 := - [1, 2, 3];
+  VECTOR<INTEGER> myVector3 := [1, 2, 3] + 1;
+  VECTOR<INTEGER> myVector4 := [1, 2, 3] - 1;
+  VECTOR<INTEGER> myVector5 := [1, 2, 3] * 1;
+  VECTOR<INTEGER> myVector6 := [1, 2, 3] / 1;
+  VECTOR<INTEGER> myVector7 := [1, 2, 3] % 1;
+  VECTOR<INTEGER> myVector8 := [1, 2, 3] ^ 1;
+  VECTOR<BOOLEAN> myVector9 := [1, 2, 3] > 1;
+  VECTOR<BOOLEAN> myVector10 := [1, 2, 3] >= 1;
+  VECTOR<BOOLEAN> myVector11 := [1, 2, 3] < 1;
+  VECTOR<BOOLEAN> myVector12 := [1, 2, 3] <= 1;
+  VECTOR<BOOLEAN> myVector13 := [1, 2, 3] = 1;
+  VECTOR<INTEGER> myVector14 := 1 + [1, 2, 3];
+  PRINT myVector;
+  PRINT myVector2;
+  PRINT myVector3;
+  PRINT myVector4;
+  PRINT myVector5;
+  PRINT myVector6;
+  PRINT myVector7;
+  PRINT myVector8;
+  PRINT myVector9;
+  PRINT myVector10;
+  PRINT myVector11;
+  PRINT myVector12;
+  PRINT myVector13;
+  PRINT myVector14;
+}

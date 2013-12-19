@@ -15,11 +15,46 @@ let booleanClassString =
 		  public Boolean not(Object bool) {
 			  return !((Boolean)bool);
 			}
+			public PlatoVector<Object> not(PlatoVector<Object> bools) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add(!(Boolean)bool);
+			  } 
+				return returnable;
+			}
 		  public Boolean or(Object bool1, Object bool2) {
 			  return ((Boolean)bool1) || ((Boolean)bool2);
 			}
+			public PlatoVector<Object> or(PlatoVector<Object> bools, Object bool2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add((Boolean)bool || (Boolean)bool2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> or(Object bool2, PlatoVector<Object> bools) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add((Boolean)bool || (Boolean)bool2);
+			  } 
+				return returnable;
+			}
 			public Boolean and(Object bool1, Object bool2) {
 			  return ((Boolean)bool1) && ((Boolean)bool2);
+			}
+			public PlatoVector<Object> and(PlatoVector<Object> bools, Object bool2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add((Boolean)bool && (Boolean)bool2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> and(Object bool2, PlatoVector<Object> bools) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add((Boolean)bool && (Boolean)bool2);
+			  } 
+				return returnable;
 			}
 		}"
 
@@ -28,38 +63,150 @@ let integerClassString =
 		  public Integer negation(Integer integer) {
 			  return -integer;
 			}
+			public PlatoVector<Object> negation(PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add(-(Integer)intVal);
+			  } 
+				return returnable;
+			}
 		  public Integer plus(Object integer1, Object integer2) {
 			  return ((Integer)integer1) + ((Integer)integer2);
+			}
+			public PlatoVector<Object> plus(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal + (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> plus(Object intVal2, PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal + (Integer)intVal2);
+			  } 
+				return returnable;
 			}
 		  public Integer minus(Object integer1, Object integer2) {
 			  return ((Integer)integer1) - ((Integer)integer2);
 			}
+			public PlatoVector<Object> minus(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal - (Integer)intVal2);
+			  } 
+				return returnable;
+			}
 		  public Integer times(Object integer1, Object integer2) {
 			  return ((Integer)integer1) * ((Integer)integer2);
+			}
+			public PlatoVector<Object> times(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal * (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> times(Object intVal2, PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal * (Integer)intVal2);
+			  } 
+				return returnable;
 			}
 		  public Integer divide(Object integer1, Object integer2) {
 			  return ((Integer)integer1) / ((Integer)integer2);
 			}
+			public PlatoVector<Object> divide(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal / (Integer)intVal2);
+			  } 
+				return returnable;
+			}
 		  public Integer mod(Object integer1, Object integer2) {
 			  return ((Integer)integer1) % ((Integer)integer2);
+			}
+			public PlatoVector<Object> mod(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal % (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> mod(Object intVal2, PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal % (Integer)intVal2);
+			  } 
+				return returnable;
 			}
 		  public Integer raise(Object integer1, Object integer2) {
 			  return (int) Math.pow((Integer)integer1, (Integer)integer2);
 			}
+			public PlatoVector<Object> raise(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((int) Math.pow((Integer)intVal, (Integer)intVal2));
+			  } 
+				return returnable;
+			}
 		  public Boolean lessThan(Object integer1, Object integer2) {
 			  return ((Integer)integer1) < ((Integer)integer2);
+			}
+			public PlatoVector<Object> lessThan(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal < (Integer)intVal2);
+			  } 
+				return returnable;
 			}
 		  public Boolean lessThanOrEqual(Object integer1, Object integer2) {
 			  return ((Integer)integer1) <= ((Integer)integer2);
 			}
+			public PlatoVector<Object> lessThanOrEqual(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal <= (Integer)intVal2);
+			  } 
+				return returnable;
+			}
 		  public Boolean greaterThan(Object integer1, Object integer2) {
 			  return ((Integer)integer1) > ((Integer)integer2);
+			}
+			public PlatoVector<Object> greaterThan(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal > (Integer)intVal2);
+			  } 
+				return returnable;
 			}
 		  public Boolean greaterThanOrEqual(Object integer1, Object integer2) {
 			  return ((Integer)integer1) >= ((Integer)integer2);
 			}
+			public PlatoVector<Object> greaterThanOrEqual(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal >= (Integer)intVal2);
+			  } 
+				return returnable;
+			}
 		  public Boolean equal(Object integer1, Object integer2) {
-			  return ((Integer)integer1) == ((Integer)integer2);
+			  return ((Integer)integer1).equals(((Integer)integer2));
+			}
+			public PlatoVector<Object> equal(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add(((Integer)intVal).equals((Integer)intVal2));
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> equal(Object intVal2, PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add(((Integer)intVal).equals((Integer)intVal2));
+			  } 
+				return returnable;
 			}
 		}"
 
@@ -148,6 +295,15 @@ let vectorLiteralsClassString =
   }
   public static Object vectorAccess(PlatoVector<Object> vec, Integer index) {
   	return vec.get(index-1);
+  }
+	public static PlatoVector vectorAccess(PlatoVector<Object> vec, PlatoVector<Object> indexer) {
+  	PlatoVector<Object> returnable = new PlatoVector<Object>();
+		for (int index = 0; index < vec.size(); index++) {
+		  if ((Boolean) indexer.get(index)) {
+				returnable.add(vec.get(index));
+			}
+		}
+		return returnable;
   }
 }"
 

@@ -125,31 +125,45 @@ let getExpressionType = function
 
 let canApplyNot = function
 	| [BooleanType] -> true
+	| [VectorLiteralType(BooleanType)] -> true
 	| _ -> false
 
 let canApplyOr = function
 	| [BooleanType; BooleanType] -> true
+	| [VectorLiteralType(BooleanType); BooleanType] -> true
+	| [BooleanType; VectorLiteralType(BooleanType)] -> true
 	| _ -> false
 
 let canApplyAnd = function
 	| [BooleanType; BooleanType] -> true
+	| [VectorLiteralType(BooleanType); BooleanType] -> true
+	| [BooleanType; VectorLiteralType(BooleanType)] -> true
 	| _ -> false
 
 let canApplyNegation = function
-	| [NumberType(_, numberType1)] -> true
+	| [NumberType(_, _)] -> true	
+	| [VectorLiteralType(NumberType(_, _))] -> true
 	| _ -> false
 
 let canApplyPlus = function
 	| [NumberType(_, numberType1); NumberType(_, numberType2)] -> (numberType1 = numberType2)
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> (arg1=arg2)
+	| [VectorLiteralType(NumberType(_, numberType1)); NumberType(_, numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(_, numberType1); VectorLiteralType(NumberType(_, numberType2))] -> (numberType1 = numberType2)
 	| _ -> false
 
 let canApplyMinus = function
 	| [NumberType(_, numberType1); NumberType(_, numberType2)] -> (numberType1 = numberType2)
+	| [VectorLiteralType(NumberType(_, numberType1)); NumberType(_, numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(_, numberType1); VectorLiteralType(NumberType(_, numberType2))] -> (numberType1 = numberType2)
 	| _ -> false
 
 let canApplyTimes = function
 	| [NumberType(extendedGroupType1, numberType1); NumberType(extendedGroupType2, numberType2)] -> 
+		(numberType1 = numberType2) && ((extendedGroupType1 = "ring") || (extendedGroupType1 = "field")) && ((extendedGroupType2 = "ring") || (extendedGroupType2 = "field"))
+ | [VectorLiteralType(NumberType(extendedGroupType1, numberType1)); NumberType(extendedGroupType2, numberType2)] -> 
+		(numberType1 = numberType2) && ((extendedGroupType1 = "ring") || (extendedGroupType1 = "field")) && ((extendedGroupType2 = "ring") || (extendedGroupType2 = "field"))
+	| [NumberType(extendedGroupType1, numberType1); VectorLiteralType(NumberType(extendedGroupType2, numberType2))] -> 
 		(numberType1 = numberType2) && ((extendedGroupType1 = "ring") || (extendedGroupType1 = "field")) && ((extendedGroupType2 = "ring") || (extendedGroupType2 = "field"))
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
@@ -157,35 +171,53 @@ let canApplyTimes = function
 let canApplyDivide = function
 	| [NumberType(extendedGroupType1, numberType1); NumberType(extendedGroupType2, numberType2)] -> 
 		(numberType1 = numberType2) && (extendedGroupType1 = "field") && (extendedGroupType2 = "field")
+  | [VectorLiteralType(NumberType(extendedGroupType1, numberType1)); NumberType(extendedGroupType2, numberType2)] -> 
+				(numberType1 = numberType2) && (extendedGroupType1 = "field") && (extendedGroupType2 = "field")
+	| [NumberType(extendedGroupType1, numberType1); VectorLiteralType(NumberType(extendedGroupType2, numberType2))] -> 
+						(numberType1 = numberType2) && (extendedGroupType1 = "field") && (extendedGroupType2 = "field")
 	| _ -> false
 
 let canApplyMod = function
 	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyRaise = function
 	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyLessThan = function
 	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyLessThanOrEqual = function
 	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyGreaterThan = function
 	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyGreaterThanOrEqual = function
 	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyEqual = function
 	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplySetDifference = function
@@ -193,7 +225,8 @@ let canApplySetDifference = function
 	| _ -> false
 
 let canApplyVectorAccess = function
-	| [VectorLiteralType(_); arg2] -> (canCast arg2 (NumberType("field", "Integers")))
+	| [VectorLiteralType(_); arg2] -> 
+		(canCast arg2 (NumberType("field", "Integers"))) || (canCast arg2 (VectorLiteralType(BooleanType)))	
 	| _ -> false
 
 let canApplyOperator inputTypeList = function
@@ -216,49 +249,100 @@ let canApplyOperator inputTypeList = function
 	| VectorAccess -> canApplyVectorAccess inputTypeList
 
 let getOperatorReturnType inputTypes = function
-	| Not -> BooleanType
-	| And -> BooleanType
-	| Or -> BooleanType
+	| Not ->
+		 (match inputTypes with 
+		 | [BooleanType] -> BooleanType
+		 | [VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
+		 | _ -> raise(PlatoError("Not must have exactly have one boolean input type")))
+	| And -> 
+		(match inputTypes with 
+		 | [BooleanType; BooleanType] -> BooleanType
+		 | [VectorLiteralType(BooleanType); BooleanType] -> VectorLiteralType(BooleanType)
+		 | [BooleanType; VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
+		 | _ -> raise(PlatoError("And must have exactly have two boolean input types")))
+	| Or -> 
+		(match inputTypes with 
+		 | [BooleanType; BooleanType] -> BooleanType
+		 | [VectorLiteralType(BooleanType); BooleanType] -> VectorLiteralType(BooleanType)
+		 | [BooleanType; VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
+		 | [VectorLiteralType(BooleanType); VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
+		 | _ -> raise(PlatoError("Or must have exactly have two boolean input types")))
 	| Negation -> 
 		(match inputTypes with 
 		 | [inputType] -> inputType
 		 | _ -> raise(PlatoError("Negation must have exactly have one input type")))
 	| Plus -> 
 	  (match inputTypes with 
+		 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+		 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
 		 | [inputType1; inputTyp2] -> inputType1
 		 | _ -> raise(PlatoError("Plus must have exactly have two input types")))
 	| Minus -> 
 	 (match inputTypes with 
-	   | [inputType1; inputTyp2] -> inputType1
+		 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+		 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+		 | [inputType1; inputTyp2] -> inputType1
 		 | _ -> raise(PlatoError("Minus must have exactly have two input types")))
 	| Times -> 
 	  (match inputTypes with  
-	 	 | [inputType1; inputTyp2] -> inputType1
+		 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+		 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+		 | [inputType1; inputTyp2] -> inputType1
 		 | _ -> raise(PlatoError("Times must have exactly have two input types")))
 	| Divide -> 
   	(match inputTypes with 
-		 |[inputType1; inputTyp2] -> inputType1
+		 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+		 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+		 | [inputType1; inputTyp2] -> inputType1
 		 | _ -> raise(PlatoError("Divide must have exactly have two input types")))
 	| Mod -> 
     (match inputTypes with 
+		 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+		 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
 		 | [inputType1; inputTyp2] -> inputType1
 		 | _ -> raise(PlatoError("Mod must have exactly have two input types")))
 	| Raise -> 	
 		(match inputTypes with 
+		 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+		 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
 		 | [inputType1; inputTyp2] -> inputType1
 		 | _ -> raise(PlatoError("Raise must have exactly have two input types")))
-	| LessThan -> BooleanType
-	| LessThanOrEqual -> BooleanType
-	| GreaterThan -> BooleanType
-	| GreaterThanOrEqual -> BooleanType
-	| Equal -> BooleanType
+	| LessThan -> 
+		(match inputTypes with 
+		 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+		 | [NumberType("field", "Integers"); VectorLiteralType(NumberType("field", "Integers"))] -> VectorLiteralType(BooleanType)
+		 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+	| LessThanOrEqual -> 
+	  (match inputTypes with 
+		 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+		 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+	| GreaterThan -> 
+		(match inputTypes with 
+		 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+		 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+	| GreaterThanOrEqual -> 
+		(match inputTypes with 
+		 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+		 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+	| Equal -> 
+		(match inputTypes with 
+		 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+		 | [inputType1; inputTyp2] -> inputType1
+		 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
 	| SetDifference ->	
 		(match inputTypes with 
 		 | [inputType1; inputType2] -> inputType1
 		 | _ -> raise(PlatoError("Set difference must have exactly have two input types")))
 	| VectorAccess ->
 		(match inputTypes with 
-		 | [VectorLiteralType(arg1); _] -> arg1
+		 | [VectorLiteralType(arg1); arg2] -> 
+			(if (canCast arg2 (NumberType("field", "Integers")))
+			 then arg1
+			 else VectorLiteralType(arg1))
 		 | _ -> raise(PlatoError("VectorAccess must have exactly have two input types, and the first type must be a VectorLiteral")))
 
 let getOperatorCallClass inputTypeList = function
@@ -268,52 +352,75 @@ let getOperatorCallClass inputTypeList = function
 	| Negation -> 
 		(match inputTypeList with
 		 | [NumberType(_, groupName)] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | _ -> raise(operatorException Negation inputTypeList)) 
   | Plus -> 
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Plus inputTypeList)) 
 	| Minus -> 
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Minus inputTypeList)) 
 	| Times -> 
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Times inputTypeList)) 
 	| Divide ->
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Divide inputTypeList)) 
 	| Mod ->
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Mod inputTypeList)) 
 	| Raise ->
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Raise inputTypeList)) 
 	| LessThan -> 
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException LessThan inputTypeList)) 
 	| LessThanOrEqual ->
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException LessThanOrEqual inputTypeList)) 
 	| GreaterThan ->
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException GreaterThan inputTypeList)) 
 	| GreaterThanOrEqual ->
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException GreaterThanOrEqual inputTypeList)) 
 	| Equal ->
 		(match inputTypeList with
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Equal inputTypeList)) 
 	| SetDifference ->
