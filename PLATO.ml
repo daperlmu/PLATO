@@ -339,7 +339,7 @@ let rec checkStatement environment = function
 		List.map (checkElseIfBlock environment) elseIfBlockList, 
 		checkElseBlock environment elseBlock)
 	| IfNoElse (expression, statementBlock, elseIfBlockList) -> 
-		TypedIfNoElse(checkExpression environment expression, checkStatementBlock environment statementBlock, List.map checkElseIfBlock environment elseIfBlockList)
+		TypedIfNoElse(checkExpression environment expression, checkStatementBlock environment statementBlock, List.map (checkElseIfBlock environment) elseIfBlockList)
   | Assignment(variableName, newValue) -> 
 		let variableIdentifier = Identifier(variableName) 
 		in let variableDetails = checkExpression environment variableIdentifier
@@ -624,11 +624,31 @@ let rec createJavaExpression = function
 	| TypedSet(setType, setExpressionList) ->
 		JavaCall("SetLiterals", "newPlatoSet", List.map createJavaExpression setExpressionList)
 
-let createJavaStatement = function
+let rec createJavaStatement = function
 	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
 	| TypedReturn(expression) -> JavaStatement(JavaReturn(createJavaExpression expression))
+	| TypedIf(typedExpression, typedStatementBlock, typedElseIfBlockList, typedElseBlock) -> 
+					JavaStatement(
+						JavaIf(createJavaExpression typedExpression,
+								createJavaBlock typedStatementBlock,
+								List.map createJavaElseIf typedElseIfBlockList,
+								createJavaElse typedElseBlock))
+	| TypedIfNoElse(typedExpression, typedStatementBlock, typedElseIfBlockList) -> 
+					JavaStatement(
+						JavaIfNoElse(createJavaExpression typedExpression,
+								createJavaBlock typedStatementBlock,
+								List.map createJavaElseIf typedElseIfBlockList
+							)
+					)
 	| TypedAssignment((variableName, variableType), newValue) -> JavaStatement(JavaAssignment(variableName, createJavaExpression newValue))
 	| TypedDeclaration((variableName, variableType), newValue) -> JavaStatement(JavaDeclaration(createJavaType variableType, variableName, Some(createJavaExpression newValue)))
+
+and createJavaElseIf = function 
+	TypedElseIfBlock(typedExpression, typedStatementBlock) -> JavaElseIf(createJavaExpression typedExpression, createJavaBlock typedStatementBlock)
+and createJavaElse = function 
+	TypedElseBlock(typedStatementBlock) -> JavaElse(createJavaBlock typedStatementBlock)
+and createJavaBlock = function 
+	TypedStatementBlock(typedStatementList) -> JavaBlock(List.map createJavaStatement typedStatementList)
 
 let createJavaFunction = function
 	  TypedFunctionDeclaration(functionHeader, TypedStatementBlock(typedStatementList)) -> 
@@ -711,14 +731,6 @@ let generateJavaValue logToJavaFile = function
 		generatePuts logToJavaFile mapName keyList valueList;
 		logToJavaFile (mapName ^ " = Collections.unmodifiableMap(" ^ mapName ^ ")")
 
-let generateJavaElseIf logToJavaFile = function
-	  JavaElseIf(javaExpression, javaBlock) ->
-			logToJavaFile "elseif("; 
-			generateJavaExpression logToJavaFile javaExpression;
-			logToJavaFile ")";
-			generateJavaBlock logToJavaFile javaBlock
-
-
 let rec generateJavaExpression logToJavaFile = function
 	| JavaConstant(javaValue) -> generateJavaValue logToJavaFile javaValue
 	| JavaVariable(stringValue) -> logToJavaFile stringValue
@@ -730,14 +742,14 @@ let rec generateJavaExpression logToJavaFile = function
 		generateJavaExpression logToJavaFile javaExpression;
 		logToJavaFile ")";
 		generateJavaBlock logToJavaFile javaBlock;
-		List.map (generateJavaElseIf logToJavaFile) javaElseIfList;
+		ignore (List.map (generateJavaElseIf logToJavaFile) javaElseIfList);
 		generateJavaElse logToJavaFile javaElse
 	| JavaIfNoElse(javaExpression, javaBlock, javaElseIfList) -> 
 		logToJavaFile "if(";
 		generateJavaExpression logToJavaFile javaExpression;
 		logToJavaFile ")";
 		generateJavaBlock logToJavaFile javaBlock;
-		List.map (generateJavaElseIf logToJavaFile) javaElseIfList
+		ignore (List.map (generateJavaElseIf logToJavaFile) javaElseIfList)
 	| JavaAssignment(variableName, variableValue) -> 
 		logToJavaFile (variableName ^ "=");
 		generateJavaExpression logToJavaFile variableValue
@@ -756,17 +768,25 @@ let rec generateJavaExpression logToJavaFile = function
 					| first::rest -> ignore (generateJavaExpression logToJavaFile first);
 					   ignore (List.map (fun elem -> logToJavaFile ","; generateJavaExpression logToJavaFile elem) rest));
 				logToJavaFile ")"
-
-let generateJavaStatement logToJavaFile = function
-	  JavaStatement(javaExpression) ->
+and generateJavaElseIf logToJavaFile = function
+	  JavaElseIf(javaExpression, javaBlock) ->
+			logToJavaFile "elseif("; 
 			generateJavaExpression logToJavaFile javaExpression;
-			logToJavaFile ";\n"
-
-let generateJavaBlock logToJavaFile = function
+			logToJavaFile ")";
+			generateJavaBlock logToJavaFile javaBlock
+and generateJavaElse logToJavaFile = function
+	  JavaElse(javaBlock) ->
+			logToJavaFile "else"; 
+			generateJavaBlock logToJavaFile javaBlock
+and generateJavaBlock logToJavaFile = function
 	  JavaBlock(javaStatementList) ->
 			logToJavaFile "{\n"; 
 			ignore (List.map (generateJavaStatement logToJavaFile) javaStatementList);
 			logToJavaFile "}\n"
+and generateJavaStatement logToJavaFile = function
+	  JavaStatement(javaExpression) ->
+			generateJavaExpression logToJavaFile javaExpression;
+			logToJavaFile ";\n"
 
 let generateJavaFunctionParameter logToJavaFile = function
 	  Parameter(paramType, paramName) ->
