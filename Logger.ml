@@ -25,6 +25,7 @@ let rec typeToString = function
 	| BooleanType -> "Booleans"
 	| NumberType(groupName) -> "Number over " ^ groupName
 	| SetLiteralType(subtype) -> "Set of " ^ (typeToString subtype)
+	| NeutralType -> "Neutral Type"
 
 let functionTypeToString = function
 	| VoidType -> "void";
@@ -54,6 +55,7 @@ let rec logPlatoTypeAst = function
 	| BooleanType -> logStringToAst "BooleanType"
 	| NumberType(gropuName) -> logListToAst ["Number Type over group "; gropuName]
 	| SetLiteralType(subType) -> ignore (logListToAst ["SetLiteral Type of subtype "]); logPlatoTypeAst subType
+	| NeutralType -> logStringToAst "NeutralType"
 
 let rec logExpressionAst = function
 	| Boolean(booleanValue) -> logListToAst ["Boolean"; string_of_bool booleanValue]
@@ -129,6 +131,7 @@ let rec typeToString = function
 	| BooleanType -> "Booleans"
 	| NumberType(groupName) -> groupName
 	| SetLiteralType(platoType) -> ("SetLiterals<" ^ (typeToString platoType) ^ ">")
+	| NeutralType -> "NeutralTypes"
 
 let logListToSast logStringList = 
 	(logToFileAppend true) "Sast.log" (String.concat " " logStringList)
@@ -142,6 +145,7 @@ let logPlatoTypeSast = function
 	| BooleanType -> logStringToSast "Boolean Type"
 	| NumberType(groupName) -> logListToSast ["Number Type over group"; groupName]
 	| SetLiteralType(platoType) -> logStringToSast ("SetLiterals<" ^ (typeToString platoType) ^ ">")
+	| NeutralType -> logStringToSast "Neutral Type"
 
 let rec logExpressionSast = function
 	| TypedBoolean(booleanValue, _) -> logListToSast ["Boolean"; string_of_bool booleanValue]
