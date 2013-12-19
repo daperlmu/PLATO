@@ -33,6 +33,9 @@ let incompatibleTypesReturnStmt functionName functionReturnType lastStmtType = P
 let heterogeneousSetLiteralException variableTypes =
 	PlatoError("Set has heterogeneous types: "^(String.concat ", " (List.map typeToString variableTypes)))
 
+let heterogeneousVectorLiteralException variableTypes =
+	PlatoError("Vector has heterogeneous types: "^(String.concat ", " (List.map typeToString variableTypes)))
+
 (* Intepreter for simple statements *)
 let evaluateSimpleUnop unopValue = function
 	| Negation -> -unopValue
@@ -105,13 +108,17 @@ let emptyEnviroment =
 let convertParamToVarDec = function
 	Parameter(variableType, variableName) -> (variableName, variableType)
 
-let getExpressionType = function 
+let getExpressionType = function
 	| TypedBoolean(_, expressionType) -> expressionType
 	| TypedNumber(_, expressionType) -> expressionType
   | TypedIdentifier(_, expressionType) -> expressionType
 	| TypedUnop(_, expressionType, _) -> expressionType
 	| TypedBinop(_, expressionType, _, _) -> expressionType
 	| TypedSet(expressionType, _) -> expressionType
+	| TypedVector(expressionType, _) -> expressionType
+	(*
+	| TypedQuantifier(expressionType, _) -> expressionType
+	*)
 
 let canApplyNot = function
 	| [BooleanType] -> true
@@ -123,10 +130,6 @@ let canApplyOr = function
 
 let canApplyAnd = function
 	| [BooleanType; BooleanType] -> true
-	| _ -> false
-
-let canApplyNegation = function
-	| [NumberType(_)] -> true
 	| _ -> false
 
 let canApplyNegation = function
@@ -145,7 +148,6 @@ let canApplyMinus = function
 (* TODO need to make this work only for rings *)
 let canApplyTimes = function
 	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
-	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
 (* TODO need to make this work only for fields *)
@@ -337,6 +339,15 @@ let rec checkExpression environment = function
 				 		in if allTrue (List.map (fun arg1 -> (headExpressionType=arg1)) expressionTypeList)
 				 			then TypedSet(SetLiteralType(List.hd expressionTypeList), setExpressionList)
 				 			else raise(heterogeneousSetLiteralException expressionTypeList)))
+	| VectorLiteral(vectoropExpressionList) ->
+		(match vectoropExpressionList with
+			[] -> TypedVector(VectorLiteralType(NeutralType), [])
+			| _ -> (let vectorExpressionList =  List.map (checkExpression environment) vectoropExpressionList
+				 in let expressionTypeList = List.map getExpressionType vectorExpressionList
+				 	in let headExpressionType = List.hd expressionTypeList
+				 		in if allTrue (List.map (fun arg1 -> (headExpressionType=arg1)) expressionTypeList)
+				 			then TypedVector(VectorLiteralType(List.hd expressionTypeList), vectorExpressionList)
+				 			else raise(heterogeneousVectorLiteralException expressionTypeList)))
 
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
@@ -356,6 +367,15 @@ let rec checkStatement environment = function
 						  in if canCast (getExpressionType expressionDetails) (getExpressionType variableDetails)
 				         then TypedAssignment((variableName, variableType), expressionDetails) 
 						     else raise(castException expressionType variableType)
+	(*| VectorAssignment(variableName, variableIndex, newValue) -> 
+		let variableIdentifier = Identifier(variableName) 
+		in let variableDetails = checkExpression environment variableIdentifier
+			 in let expressionDetails = checkExpression environment newValue
+			     in let expressionType, variableType = (getExpressionType expressionDetails), (getExpressionType variableDetails)
+						  in if canCast (getExpressionType expressionDetails) (getExpressionType variableDetails)
+				         then TypedVectorAssignment((variableName, variableIndexType, variableType), expressionDetails) 
+						     else raise(castException expressionType variableType)
+	*)
 	| Declaration(variableType, variableName, newValue) ->
 		let expressionDetails = checkExpression environment newValue
 		   in let expressionType = (getExpressionType expressionDetails)  
@@ -618,6 +638,8 @@ let createJavaType = function
 	| BooleanType -> JavaBooleanType
 	| NumberType(_) -> JavaIntType
 	| SetLiteralType(_) -> JavaSetLiteralType
+	| VectorLiteralType(_) -> JavaVectorLiteralType
+	| NeutralType -> JavaNeutralType
 
 let rec createJavaExpression = function
 	| TypedBoolean(booleanValue, _) -> JavaConstant(JavaValue(JavaBoolean(booleanValue)))
@@ -629,6 +651,8 @@ let rec createJavaExpression = function
 		JavaCall(getOperatorCallClass [getExpressionType binaryExpression1; getExpressionType binaryExpression2] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
 	| TypedSet(setType, setExpressionList) ->
 		JavaCall("SetLiterals", "newPlatoSet", List.map createJavaExpression setExpressionList)
+	| TypedVector(vectorType, vectorExpressionList) ->
+		JavaCall("VectorLiterals", "newPlatoVector", List.map createJavaExpression vectorExpressionList)
 
 let rec createJavaStatement = function
 	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
@@ -719,6 +743,8 @@ let generateJavaType logToJavaFile = function
 	| JavaBooleanType -> logToJavaFile "boolean "
 	| JavaIntType -> logToJavaFile "int "
 	| JavaSetLiteralType -> logToJavaFile "PlatoSet<Object> "
+	| JavaVectorLiteralType -> logToJavaFile "PlatoVector<Object> "
+	| JavaNeutralType -> logToJavaFile "Object "
 
 let generateJavaPrimitive logToJavaFile = function
 	| JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
@@ -859,6 +885,14 @@ let generatePlatoSetClass =
 	let logToIntegerClassFile = logToFileOverwrite false "PlatoSet.java"
 	in logToIntegerClassFile platoSetClassString
 
+let generatePlatoVectorLiteralsClass = 
+	let logToIntegerClassFile = logToFileOverwrite false "VectorLiterals.java"
+	in logToIntegerClassFile vectorLiteralsClassString
+
+let generatePlatoVectorClass = 
+	let logToIntegerClassFile = logToFileOverwrite false "PlatoVector.java"
+	in logToIntegerClassFile platoVectorClassString
+
 let generatePlatoGroupClass = 
 	let logToGroupClassFile = logToFileOverwrite false "Groups.java"
 	in logToGroupClassFile groupClassString		
@@ -877,6 +911,8 @@ let generatePlatoClasses =
 	generatePlatoIntegerClass;
 	generatePlatoSetLiteralsClass;
 	generatePlatoSetClass;
+	generatePlatoVectorLiteralsClass;
+	generatePlatoVectorClass;
 	generatePlatoGroupClass;	
 	generatePlatoRingClass;
 	generatePlatoFieldClass	

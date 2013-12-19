@@ -4,6 +4,8 @@ type javaType =
 	| JavaBooleanType
 	| JavaIntType
 	| JavaSetLiteralType
+	| JavaVectorLiteralType
+	| JavaNeutralType
 
 type javaPrimitive = 
 	| JavaBoolean of bool

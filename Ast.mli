@@ -20,6 +20,7 @@ type platoType =
 	| BooleanType
 	| NumberType of string
 	| SetLiteralType of platoType
+	| VectorLiteralType of platoType
 	| NeutralType
 
 type platoQuantifier =
@@ -38,6 +39,7 @@ type expression =
 	| Unop of operator * expression
 	| Binop of operator * expression * expression
 	| SetLiteral of expression list
+	| VectorLiteral of expression list
 
 type statement =
 	| Print of expression
@@ -45,6 +47,7 @@ type statement =
 	| If of expression * statementBlock * elseIfBlock list * elseBlock
 	| IfNoElse of expression * statementBlock * elseIfBlock list
   | Assignment of string * expression
+  	| VectorAssignment of string * expression * expression
 	| Declaration of platoType * string * expression	
 and statementBlock = 
 	  StatementBlock of statement list

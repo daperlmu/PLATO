@@ -1,6 +1,7 @@
 %{ open Ast open Logger %}
 
-%token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE SET_TYPE VOID_TYPE
+%token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE SET_TYPE VECTOR_TYPE VOID_TYPE
+%token VECTOR_TO VECTOR_BY
 %token WHICH_QUANTIFIER SOME_QUANTIFIER ALL_QUANTIFIER
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
@@ -11,6 +12,7 @@
 %token <int> NUMBER
 %token <string> IDENTIFIER
 
+%nonassoc VECTOR_TO VECTOR_BY
 %left OR
 %left AND
 %left EQUAL
@@ -32,6 +34,7 @@ platoType:
 	| NUMBER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
 	| SET_TYPE LESS_THAN platoType GREATER_THAN  { SetLiteralType($3) }
+	| VECTOR_TYPE LESS_THAN platoType GREATER_THAN  { VectorLiteralType($3) }
 
 platoFunctionType:
 	| VOID_TYPE { VoidType }
@@ -46,7 +49,7 @@ setLiteral:
 	| OPEN_BRACE commaSeparatedExpressionNonemptyList CLOSE_BRACE {SetLiteral(List.rev $2)}
 
 vectorLiteral:
-	OPEN_BRACKET CLOSE_BRACKET {SetLiteral([])}
+	OPEN_BRACKET CLOSE_BRACKET {VectorLiteral([])}
 	| OPEN_BRACKET commaSeparatedExpressionNonemptyList CLOSE_BRACKET {VectorLiteral(List.rev $2)}
 
 quantifier:
@@ -74,13 +77,18 @@ expression:
 	| expression GREATER_THAN expression { Binop(GreaterThan, $1, $3) }
 	| expression GREATER_THAN EQUAL expression %prec GREATER_THAN_OR_EQUAL { Binop(GreaterThanOrEqual, $1, $4) }
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
-	| setLiteral {$1}
+	| setLiteral { $1 }
 	| LPAREN expression RPAREN { $2 }
-	| vectorLiteral {$1}
+	| vectorLiteral { $1 }
 	/*
-	TODO: add quantifiers after vector literals have been implemented
-	| quantifier id IN vectorLiteral SATISFIES expr {QuantifierLiteral($1, $2, $4, $6)}
+	| quantifier IDENTIFIER IN vectorLiteral SATISFIES expr {QuantifierLiteral($1, Identifier($2), $4, $6)}
 	*/
+
+	/*
+	| expression VECTOR_TO expression { VectorRange($3, Number(1)) }
+	| expression VECTOR_TO expression VECTOR_BY expression { VectorRange($3, $5) }
+	*/
+	
 
 statement:
   | PRINT expression SEMICOLON { Print($2) }
@@ -88,7 +96,8 @@ statement:
   | IF LPAREN expression RPAREN statementBlock elseIfBlockList elseBlock { If($3, $5, List.rev $6, $7) }
   | IF LPAREN expression RPAREN statementBlock elseIfBlockList { IfNoElse($3, $5, List.rev $6) }
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
-	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
+  | IDENTIFIER OPEN_BRACKET expression CLOSE_BRACKET COLON EQUAL expression SEMICOLON { VectorAssignment($1, $3, $7) }
+  |	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
 
 statementList:
   |/* empty */ { [] }

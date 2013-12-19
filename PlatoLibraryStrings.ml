@@ -9,7 +9,7 @@ let commonClassString =
 			}\n
 		}\n
 	}"
-		
+
 
 let booleanClassString = 
 		"public class Booleans { \n
@@ -23,7 +23,7 @@ let booleanClassString =
 			  return bool1 && bool2;\n
 			}\n
 		}"
-		
+
 let integerClassString = 
 		"public class Integers { \n
 		  public Integer negation(Integer integer) {\n
@@ -129,6 +129,22 @@ public class PlatoSet<T> extends HashSet<T> {
   	String parentToString = super.toString();
   	return \"{\"+parentToString.substring(1, parentToString.length()-1)+\"}\";
   }
+}"
+
+let vectorLiteralsClassString = 
+"public class VectorLiterals {
+  public static PlatoVector<Object> newPlatoVector(Object ... objects) {
+  	PlatoVector<Object> returnable = new PlatoVector<Object>();
+  	for(Object object : objects) {
+    	returnable.add(object);
+    }
+    return returnable;
+  }
+}"
+
+let platoVectorClassString = 
+"import java.util.ArrayList;
+public class PlatoVector<T> extends ArrayList<T> {
 }"
 
 let groupClassString =

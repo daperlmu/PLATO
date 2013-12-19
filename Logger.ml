@@ -25,6 +25,7 @@ let rec typeToString = function
 	| BooleanType -> "Booleans"
 	| NumberType(groupName) -> "Number over " ^ groupName
 	| SetLiteralType(subtype) -> "Set of " ^ (typeToString subtype)
+	| VectorLiteralType(subtype) -> "Vector of " ^ (typeToString subtype)
 	| NeutralType -> "Neutral Type"
 
 let functionTypeToString = function
@@ -55,6 +56,7 @@ let rec logPlatoTypeAst = function
 	| BooleanType -> logStringToAst "BooleanType"
 	| NumberType(gropuName) -> logListToAst ["Number Type over group "; gropuName]
 	| SetLiteralType(subType) -> ignore (logListToAst ["SetLiteral Type of subtype "]); logPlatoTypeAst subType
+	| VectorLiteralType(subType) -> ignore (logListToAst ["VectorLiteral Type of subtype "]); logPlatoTypeAst subType
 	| NeutralType -> logStringToAst "NeutralType"
 
 let rec logExpressionAst = function
@@ -63,8 +65,11 @@ let rec logExpressionAst = function
 	| Identifier(identifierName) -> logListToAst ["Identifier"; identifierName]
 	| Unop(operator, expression) -> logOperatorAst operator; logExpressionAst expression
 	| Binop(operator, expression1, expression2) -> logOperatorAst operator; logExpressionAst expression1; logExpressionAst expression2
-	| SetLiteral(expressionList) -> 
+	| SetLiteral(expressionList) ->
 		logListToAst ["Set of"; string_of_int (List.length expressionList);"elements"];
+		ignore (List.map logExpressionAst expressionList)
+	| VectorLiteral(expressionList) ->
+		logListToAst ["Vector of"; string_of_int (List.length expressionList);"elements"];
 		ignore (List.map logExpressionAst expressionList)
 
 let logStatementAst = function
@@ -132,6 +137,7 @@ let rec typeToString = function
 	| BooleanType -> "Booleans"
 	| NumberType(groupName) -> groupName
 	| SetLiteralType(platoType) -> ("Set<" ^ (typeToString platoType) ^ ">")
+	| VectorLiteralType(platoType) -> ("Vector<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> "NeutralTypes"
 
 let logListToSast logStringList = 
@@ -146,6 +152,7 @@ let logPlatoTypeSast = function
 	| BooleanType -> logStringToSast "Boolean Type"
 	| NumberType(groupName) -> logListToSast ["Number Type over group"; groupName]
 	| SetLiteralType(platoType) -> logStringToSast ("SetLiterals<" ^ (typeToString platoType) ^ ">")
+	| VectorLiteralType(platoType) -> logStringToSast ("VectorLiterals<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> logStringToSast "Neutral Type"
 
 let rec logExpressionSast = function
@@ -168,6 +175,11 @@ let rec logExpressionSast = function
 		logExpressionSast operatorExpression2
 	| TypedSet(platoType, expressionList) ->
 		logStringToSast "set literal";
+		logListToSast ["of type";  typeToString platoType];
+		logStringToSast "containing the expressions";
+		ignore (List.map logExpressionSast expressionList)
+	| TypedVector(platoType, expressionList) ->
+		logStringToSast "vector literal";
 		logListToSast ["of type";  typeToString platoType];
 		logStringToSast "containing the expressions";
 		ignore (List.map logExpressionSast expressionList)
