@@ -8,7 +8,7 @@ open Filename;;
 exception PlatoError of string
 exception DebugException of string
 
-(* TODO INTEGER d = v[1], two functions with param n *)
+(* TODO INTEGER d = v[1], two functions with param n, bare function expression *)
 (* TODO? functions in any order, no duplicate group names, quantifiers *)
 (* TODO??? tuples, matrices *)
 
