@@ -130,7 +130,7 @@ let logProgramAst = function
 let rec typeToString = function
 	| BooleanType -> "Booleans"
 	| NumberType(groupName) -> groupName
-	| SetLiteralType(platoType) -> ("SetLiterals<" ^ (typeToString platoType) ^ ">")
+	| SetLiteralType(platoType) -> ("Set<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> "NeutralTypes"
 
 let logListToSast logStringList = 
