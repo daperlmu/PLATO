@@ -69,8 +69,8 @@ expression:
 statement:
   | PRINT expression SEMICOLON { Print($2) }
   | RETURN expression SEMICOLON { Return($2) }
-  | IF LPAREN expression RPAREN statementBlock elseIfBlockList elseBlock { If($3, $5, $6, $7) }
-  | IF LPAREN expression RPAREN statementBlock elseIfBlockList { IfNoElse($3, $5, $6) }
+  | IF LPAREN expression RPAREN statementBlock elseIfBlockList elseBlock { If($3, $5, List.rev $6, $7) }
+  | IF LPAREN expression RPAREN statementBlock elseIfBlockList { IfNoElse($3, $5, List.rev $6) }
   | IDENTIFIER COLON EQUAL expression SEMICOLON { Assignment($1, $4) }
 	|	platoType IDENTIFIER COLON EQUAL expression SEMICOLON { Declaration($1, $2, $5) }
 
