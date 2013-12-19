@@ -336,7 +336,7 @@ let rec checkStatement environment = function
 	| If (expression, statementBlock, elseIfBlockList, elseBlock) -> 
 		TypedIf(checkExpression environment expression, 
 		checkStatementBlock environment statementBlock, 
-		List.map checkElseIfBlock environment elseIfBlockList, 
+		List.map (checkElseIfBlock environment) elseIfBlockList, 
 		checkElseBlock environment elseBlock)
 	| IfNoElse (expression, statementBlock, elseIfBlockList) -> 
 		TypedIfNoElse(checkExpression environment expression, checkStatementBlock environment statementBlock, List.map checkElseIfBlock environment elseIfBlockList)
@@ -350,7 +350,7 @@ let rec checkStatement environment = function
 						     else raise(castException expressionType variableType)
 	| Declaration(variableType, variableName, newValue) ->
 		let expressionDetails = checkExpression environment newValue
-		   in let expressionType = (getExpressionType expressionDetails)  
+		   in let expressionType = (getExpressionType expressionDetails)   
 			    in if canCast expressionType variableType
 			       then (updateScope environment.scope (variableName, variableType);
 						       TypedDeclaration((variableName, variableType), expressionDetails))
