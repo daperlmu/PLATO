@@ -8,6 +8,9 @@ rule token = parse
 	| "NUMBER" { NUMBER_TYPE }
 	| "SET"   { SET_TYPE }
 	| "VOID" { VOID_TYPE }
+	| "VECTOR"   { VECTOR_TYPE }
+	| "TO"   { VECTOR_TO }
+	| "BY"   { VECTOR_BY }
   | "WHICH" { WHICH_QUANTIFIER }
 	| "SOME" { SOME_QUANTIFIER }
 	| "ALL" { ALL_QUANTIFIER }

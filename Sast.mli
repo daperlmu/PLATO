@@ -10,13 +10,17 @@ type typedExpression =
 	| TypedUnop of operator * Ast.platoType * typedExpression
 	| TypedBinop of operator * Ast.platoType * typedExpression * typedExpression
 	| TypedSet of Ast.platoType * typedExpression list
+	| TypedVector of Ast.platoType * typedExpression list
 
 type typedStatement = 
 	| TypedPrint of typedExpression
 	| TypedReturn of typedExpression
 	| TypedIf of typedExpression * typedStatementBlock * typedElseIfBlock list * typedElseBlock
 	| TypedIfNoElse of typedExpression * typedStatementBlock * typedElseIfBlock list
-	| TypedAssignment of variableDeclaration * typedExpression      
+	| TypedAssignment of variableDeclaration * typedExpression
+	(*
+	| TypedVectorAssignment of variableDeclaration * typedExpression * typedExpression
+	*)
 	| TypedDeclaration of variableDeclaration * typedExpression
 and typedElseIfBlock = 
 	TypedElseIfBlock of typedExpression * typedStatementBlock
