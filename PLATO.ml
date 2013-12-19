@@ -1053,7 +1053,11 @@ and generateJavaBlock logToJavaFile = function
 and generateJavaStatement logToJavaFile = function
 	  JavaStatement(javaExpression) ->
 			generateJavaExpression logToJavaFile javaExpression;
-			logToJavaFile ";\n"
+			(match javaExpression with 
+				JavaIf(_, _, _, _) -> ()
+				| JavaIfNoElse(_, _, _) -> ()
+				| _ -> logToJavaFile ";\n")
+			
 
 let generateJavaFunctionParameter logToJavaFile = function
 	  Parameter(paramType, paramName) ->
