@@ -19,5 +19,14 @@ INTEGER lol(INTEGER a) {
   PRINT r;
   PRINT qvxy6;
   PRINT ct;
+  if(qvxy6=a){
+	INTEGER v := 3;
+	}
+ elseif(ct < 2){
+	INTEGER f := 5;
+	}
+ else {
+	INTEGER e := 6;
+}
 	RETURN a;
 }

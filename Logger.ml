@@ -72,6 +72,7 @@ let logStatementAst = function
 	| Return(expression) -> logStringToAst "Return"; logExpressionAst(expression)
 	| Assignment(identifier, rhs) -> logStringToAst "Assignment"; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
 	| Declaration(platoType, identifier, rhs) -> logStringToAst "Declaration"; logPlatoTypeAst platoType; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
+	| _ -> ()
 		
 let logStatementBlockAst = function
 	  StatementBlock(statementList) -> logListToAst ["StatementBlock of size"; string_of_int (List.length statementList)]; ignore (List.map logStatementAst statementList)
@@ -188,6 +189,7 @@ let logStatementSast = function
 		logPlatoTypeSast variableType;
 		logStringToSast "and assign to value "; 
 		logExpressionSast(newValue)
+	| _ -> ()
 
 let logStatementBlockSast = function
 	  TypedStatementBlock(statementList) -> logListToSast ["StatementBlock of size"; string_of_int (List.length statementList)]; ignore (List.map logStatementSast statementList)
@@ -275,6 +277,7 @@ let rec logJavaExpressionAst = function
 	| JavaCall(className, methodName, methodParameters) -> 
 		logListToJavaAst ["Java call to"; className; "."; methodName; "with"; string_of_int (List.length methodParameters); "parameters"]; 
 		ignore (List.map logJavaExpressionAst methodParameters)
+	| _ -> ()
 
 let logJavaStatementAst = function
     JavaStatement(javaExpression) -> logStringToJavaAst "Java bare statement"; logJavaExpressionAst javaExpression

@@ -769,7 +769,7 @@ let rec generateJavaExpression logToJavaFile = function
 				logToJavaFile ")"
 and generateJavaElseIf logToJavaFile = function
 	  JavaElseIf(javaExpression, javaBlock) ->
-			logToJavaFile "elseif("; 
+			logToJavaFile "else if("; 
 			generateJavaExpression logToJavaFile javaExpression;
 			logToJavaFile ")";
 			generateJavaBlock logToJavaFile javaBlock
