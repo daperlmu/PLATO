@@ -333,6 +333,13 @@ let rec checkExpression environment = function
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
 	| Return(expression) -> TypedReturn(checkExpression environment expression)
+	| If (expression, statementBlock, elseIfBlockList, elseBlock) -> 
+		TypedIf(checkExpression environment expression, 
+		checkStatementBlock environment statementBlock, 
+		List.map checkElseIfBlock environment elseIfBlockList, 
+		checkElseBlock environment elseBlock)
+	| IfNoElse (expression, statementBlock, elseIfBlockList) -> 
+		TypedIfNoElse(checkExpression environment expression, checkStatementBlock environment statementBlock, List.map checkElseIfBlock environment elseIfBlockList)
   | Assignment(variableName, newValue) -> 
 		let variableIdentifier = Identifier(variableName) 
 		in let variableDetails = checkExpression environment variableIdentifier
@@ -348,15 +355,22 @@ let rec checkStatement environment = function
 			       then (updateScope environment.scope (variableName, variableType);
 						       TypedDeclaration((variableName, variableType), expressionDetails))
 					   else raise(castException expressionType variableType)
+and checkStatementBlock environment = function
+	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement environment) statementList)
+and checkElseIfBlock environment = function 
+	ElseIfBlock(expression, statementBlock) -> 
+		TypedElseIfBlock(checkExpression environment expression, checkStatementBlock environment statementBlock)
+and checkElseBlock environment = function 
+	ElseBlock(statementBlock) -> 
+		TypedElseBlock(checkStatementBlock environment statementBlock)
 
 let extractExpressionFromStmt environment = function 
 	| Print(expression) -> checkExpression environment expression
 	| Return(expression) -> checkExpression environment expression
+	| If(expression,_, _, _) -> checkExpression environment expression
+	| IfNoElse(expression, _, _) -> checkExpression environment expression
   | Assignment(variableName, newValue) -> checkExpression environment newValue 
 	| Declaration(variableType, variableName, newValue) -> checkExpression environment newValue
-
-let checkStatementBlock environment = function
-	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement environment) statementList) 
 
 let checkMainBlock = function
 	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock)
@@ -697,12 +711,33 @@ let generateJavaValue logToJavaFile = function
 		generatePuts logToJavaFile mapName keyList valueList;
 		logToJavaFile (mapName ^ " = Collections.unmodifiableMap(" ^ mapName ^ ")")
 
+let generateJavaElseIf logToJavaFile = function
+	  JavaElseIf(javaExpression, javaBlock) ->
+			logToJavaFile "elseif("; 
+			generateJavaExpression logToJavaFile javaExpression;
+			logToJavaFile ")";
+			generateJavaBlock logToJavaFile javaBlock
+
+
 let rec generateJavaExpression logToJavaFile = function
 	| JavaConstant(javaValue) -> generateJavaValue logToJavaFile javaValue
 	| JavaVariable(stringValue) -> logToJavaFile stringValue
 	| JavaReturn(expressionToReturn) ->
 		logToJavaFile "return ";
 		generateJavaExpression logToJavaFile expressionToReturn
+	| JavaIf(javaExpression, javaBlock, javaElseIfList, javaElse) -> 
+		logToJavaFile "if(";
+		generateJavaExpression logToJavaFile javaExpression;
+		logToJavaFile ")";
+		generateJavaBlock logToJavaFile javaBlock;
+		List.map (generateJavaElseIf logToJavaFile) javaElseIfList;
+		generateJavaElse logToJavaFile javaElse
+	| JavaIfNoElse(javaExpression, javaBlock, javaElseIfList) -> 
+		logToJavaFile "if(";
+		generateJavaExpression logToJavaFile javaExpression;
+		logToJavaFile ")";
+		generateJavaBlock logToJavaFile javaBlock;
+		List.map (generateJavaElseIf logToJavaFile) javaElseIfList
 	| JavaAssignment(variableName, variableValue) -> 
 		logToJavaFile (variableName ^ "=");
 		generateJavaExpression logToJavaFile variableValue
