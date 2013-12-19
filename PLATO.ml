@@ -324,9 +324,11 @@ let rec checkExpression environment = function
 			     then TypedBinop(binaryOperator, getOperatorReturnType expressionTypeList binaryOperator, binaryExpression1, binaryExpression2)
 			     else raise(operatorException binaryOperator expressionTypeList))
 	| SetLiteral(setopExpressionList) ->
-		(let setExpressionList =  List.map (checkExpression environment) setopExpressionList
-		 in let expressionTypeList = List.map getExpressionType setExpressionList
-		 	in TypedSet(SetLiteralType(List.hd expressionTypeList), setExpressionList))
+		(match setopExpressionList with
+			[] -> TypedSet(SetLiteralType(NeutralType), [])
+			| _ -> (let setExpressionList =  List.map (checkExpression environment) setopExpressionList
+				 in let expressionTypeList = List.map getExpressionType setExpressionList
+				 	in TypedSet(SetLiteralType(List.hd expressionTypeList), setExpressionList)))
 
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)

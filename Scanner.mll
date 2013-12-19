@@ -6,7 +6,11 @@ rule token = parse
 	| "BOOLEAN" { BOOLEAN_TYPE }
 	| "INTEGER" { INTEGER_TYPE }
 	| "NUMBER" { NUMBER_TYPE }
+	| "SET"   { SET_TYPE }
 	| "VOID" { VOID_TYPE }
+  | "WHICH" { WHICH_QUANTIFIER }
+	| "SOME" { SOME_QUANTIFIER }
+	| "ALL" { ALL_QUANTIFIER }
   | "TRUE" { BOOLEAN(true) }
 	| "FALSE" { BOOLEAN(false) }
 	| "NOT" { NOT }

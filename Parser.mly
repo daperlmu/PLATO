@@ -1,6 +1,7 @@
 %{ open Ast open Logger %}
 
-%token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE VOID_TYPE
+%token BOOLEAN_TYPE INTEGER_TYPE NUMBER_TYPE SET_TYPE VOID_TYPE
+%token WHICH_QUANTIFIER SOME_QUANTIFIER ALL_QUANTIFIER
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
 %token PLUS MINUS BACKSLASH TIMES DIVIDE PERCENT CARET AND OR 
@@ -30,6 +31,7 @@ platoType:
 	| INTEGER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE  { NumberType("Integers") }
 	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
+	| SET_TYPE LESS_THAN platoType GREATER_THAN  { SetLiteralType($3) }
 
 platoFunctionType:
 	| VOID_TYPE { VoidType }
@@ -42,6 +44,11 @@ commaSeparatedExpressionNonemptyList:
 setLiteral:
 	OPEN_BRACE CLOSE_BRACE {SetLiteral([])}
 	| OPEN_BRACE commaSeparatedExpressionNonemptyList CLOSE_BRACE {SetLiteral(List.rev $2)}
+
+quantifier:
+	WHICH_QUANTIFIER {WhichQuantifier}
+	| SOME_QUANTIFIER {SomeQuantifier}
+	| ALL_QUANTIFIER {AllQuantifier}
 
 expression:
   | BOOLEAN { Boolean($1) }
@@ -65,6 +72,10 @@ expression:
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
 	| setLiteral {$1}
 	| LPAREN expression RPAREN { $2 }
+	/*
+	TODO: add quantifiers after vector literals have been implemented
+	| quantifier id IN vectorLiteral SATISFIES expr {QuantifierLiteral($1, $2, $4, $6)}
+	*/
 
 statement:
   | PRINT expression SEMICOLON { Print($2) }
