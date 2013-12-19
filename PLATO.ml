@@ -14,7 +14,7 @@ let castException expressionType  variableType =
 	PlatoError("Cannot cast from " ^ (typeToString expressionType) ^ " to " ^ (typeToString variableType))
 		
 let operatorException operator inputTypeList = 
-	PlatoError("Cannot apply " ^ (operatorToString operator) ^ " to type " ^ (String.concat ", " (List.map typeToString inputTypeList)))
+	PlatoError("Cannot apply " ^ (operatorToString operator) ^ " to types " ^ (String.concat ", " (List.map typeToString inputTypeList)))
 
 let identityException groupName =
 	PlatoError("Error while generating group, ring or field " ^ groupName ^ ".  Could not find identity element")
@@ -319,7 +319,7 @@ let rec checkExpression environment = function
 	| Binop(binaryOperator, binaryExpression1, binaryExpression2) ->
 		(let binaryExpression1 = checkExpression environment binaryExpression1
 		 and binaryExpression2 = checkExpression environment binaryExpression2
-     in let expressionTypeList = [getExpressionType binaryExpression2; getExpressionType binaryExpression2]
+     in let expressionTypeList = [getExpressionType binaryExpression1; getExpressionType binaryExpression2]
 		    in if canApplyOperator expressionTypeList binaryOperator
 			     then TypedBinop(binaryOperator, getOperatorReturnType expressionTypeList binaryOperator, binaryExpression1, binaryExpression2)
 			     else raise(operatorException binaryOperator expressionTypeList))
@@ -559,7 +559,8 @@ let checkExtendedGroupBlock = function
 	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) -> 
 		  let groupElementList = evaluateSimpleSet groupElements
 			in let additionTable = generateTable groupElementList groupAdditionFunction
-				 in if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable)
+				 in print_table additionTable;
+				    if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable)
 				    then let additiveInverseList = generateInverseList groupName groupElementList (getGroupIdentity groupName groupElementList additionTable) additionTable
 			  	        in TypedGroupDeclaration(groupName, groupElementList, additionTable, additiveInverseList)
 			      else raise(PlatoError("Group addition must be closed and associative"))

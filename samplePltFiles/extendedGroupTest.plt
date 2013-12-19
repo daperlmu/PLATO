@@ -3,7 +3,8 @@ main() {
   PRINT x * x;
   PRINT 2 * 2;
   NUMBER OVER z5 y := 2;
-  PRINT y / 3;
+  NUMBER OVER z5 y2 := 3;
+  PRINT y / y2;
   PRINT 2 / 3;
 }
 RING z3 {
