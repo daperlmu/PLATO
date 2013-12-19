@@ -484,39 +484,10 @@ let rec isElement list element =
 	                then true
 									else isElement tail element
 
-let isClosed groupElements groupTable = 
+let isClosed groupElements groupTable =
 	let allTrue list = List.fold_left (&&) true list
   in allTrue (List.map (fun intList -> allTrue (List.map (isElement groupElements) intList)) groupTable)	
-																																																																																														
-let checkAssociative a b c groupTable = 
-	let groupTimes = fun a b -> List.nth (List.nth groupTable a) b
-	in let starResult = groupTimes (groupTimes a b) c
-	   in let circleResult = groupTimes a (groupTimes b c)
-		    in starResult = circleResult
-						
-let rec checkAssociativeList aList b c groupTable	=
-	match aList with
-	| [] -> true
-	| head::tail -> if checkAssociative head b c groupTable 
-	                then checkAssociativeList tail b c groupTable	
-		              else false
-								
-let rec checkAssociativeListPair aList bList c groupTable =	
-	match bList with
-	| [] -> true
-	| head::tail -> if checkAssociativeList aList head c groupTable 
-	                then checkAssociativeListPair aList tail c groupTable	
-		              else false		
-		
-let rec checkAssociativeListTriple aList bList cList groupTable =	
-	match cList with
-	| [] -> true
-	| head::tail -> if checkAssociativeListPair aList bList head groupTable 
-	                then checkAssociativeListTriple aList bList tail groupTable	
-		              else false				
-					
-let isAssociative groupElements groupTable = checkAssociativeListTriple groupElements groupElements groupElements groupTable 				
-
+	
 let rec getIndexHelper element list startIndex =
 	match list with 
 	| [] -> raise Not_found
@@ -525,7 +496,36 @@ let rec getIndexHelper element list startIndex =
 	  then startIndex
 	  else getIndexHelper element tail (startIndex + 1)
 
-let getIndex element list = getIndexHelper element list 0												
+let getIndex element list = getIndexHelper element list 0		
+
+let checkAssociative a b c groupElements groupTable = 
+	let groupTimes = fun a b -> List.nth (List.nth groupTable (getIndex a groupElements)) (getIndex b groupElements)
+	in let starResult = groupTimes (groupTimes a b) c
+	   in let circleResult = groupTimes a (groupTimes b c)
+		    in starResult = circleResult
+						
+let rec checkAssociativeList aList b c groupElements groupTable	=
+	match aList with
+	| [] -> true
+	| head::tail -> if checkAssociative head b c groupElements groupTable 
+	                then checkAssociativeList tail b c groupElements groupTable	
+		              else false
+								
+let rec checkAssociativeListPair aList bList c groupElements groupTable =	
+	match bList with
+	| [] -> true
+	| head::tail -> if checkAssociativeList aList head c groupElements groupTable 
+	                then checkAssociativeListPair aList tail c groupElements groupTable	
+		              else false		
+		
+let rec checkAssociativeListTriple aList bList cList groupElements groupTable =	
+	match cList with
+	| [] -> true
+	| head::tail -> if checkAssociativeListPair aList bList head groupElements groupTable 
+	                then checkAssociativeListTriple aList bList tail groupElements groupTable	
+		              else false				
+					
+let isAssociative groupElements groupTable = checkAssociativeListTriple groupElements groupElements groupElements groupElements groupTable 														
 						
 let rec removeNthHelper n list acc = 
 	if n = 0 
@@ -541,35 +541,35 @@ let rec isCommutative table =
 	       then isCommutative (List.tl (List.map List.tl table))
 				 else false						
 
-let checkDistributive a b c additionTable multiplicationTable = 
-  let groupPlus = fun a b -> List.nth (List.nth additionTable a) b
-	in let groupTimes = fun a b -> List.nth (List.nth multiplicationTable a) b
+let checkDistributive a b c groupElements additionTable multiplicationTable = 
+  let groupPlus = fun a b -> List.nth (List.nth additionTable (getIndex a groupElements)) (getIndex b groupElements)
+	in let groupTimes = fun a b -> List.nth (List.nth multiplicationTable (getIndex a groupElements)) (getIndex b groupElements)
 	   in let starResult = groupTimes a (groupPlus b c)
 	      in let circleResult = groupPlus (groupTimes a b) (groupTimes a c)
 		       in starResult = circleResult
 						
-let rec checkDistributiveList aList b c additionTable multiplicationTable	=
+let rec checkDistributiveList aList b c groupElements additionTable multiplicationTable	=
 	match aList with
 	| [] -> true
-	| head::tail -> if checkDistributive head b c additionTable multiplicationTable 
-	                then checkDistributiveList tail b c additionTable multiplicationTable	
+	| head::tail -> if checkDistributive head b c groupElements additionTable multiplicationTable 
+	                then checkDistributiveList tail b c groupElements additionTable multiplicationTable	
 		              else false
 								
-let rec checkDistributiveListPair aList bList c additionTable multiplicationTable =	
+let rec checkDistributiveListPair aList bList c groupElements additionTable multiplicationTable =	
 	match bList with
 	| [] -> true
-	| head::tail -> if checkDistributiveList aList head c additionTable multiplicationTable 
-	                then checkDistributiveListPair aList tail c additionTable multiplicationTable	
+	| head::tail -> if checkDistributiveList aList head c groupElements additionTable multiplicationTable 
+	                then checkDistributiveListPair aList tail c groupElements additionTable multiplicationTable	
 		              else false		
 		
-let rec checkDistributiveListTriple aList bList cList additionTable multiplicationTable =	
+let rec checkDistributiveListTriple aList bList cList groupElements additionTable multiplicationTable =	
 	match cList with
 	| [] -> true
-	| head::tail -> if checkDistributiveListPair aList bList head additionTable multiplicationTable 
-	                then checkDistributiveListTriple aList bList tail additionTable multiplicationTable	
+	| head::tail -> if checkDistributiveListPair aList bList head groupElements additionTable multiplicationTable 
+	                then checkDistributiveListTriple aList bList tail groupElements additionTable multiplicationTable	
 		              else false				
 					
-let distributes groupElements additionTable multiplicationTable = checkDistributiveListTriple groupElements groupElements groupElements additionTable multiplicationTable
+let distributes groupElements additionTable multiplicationTable = checkDistributiveListTriple groupElements groupElements groupElements groupElements additionTable multiplicationTable
 						
 let checkExtendedGroupBlock = function
 	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) -> 

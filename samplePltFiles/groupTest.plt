@@ -16,6 +16,6 @@ GROUP z3 {
 GROUP z3plus1 {
   {1, 2, 3};
   INTEGER add(INTEGER n1, INTEGER n2) {
-    RETURN (n1 + n2 - 1) % 3;
+    RETURN ((n1 - 1) + (n2 - 1)) % 3 + 1;
   }
 }
