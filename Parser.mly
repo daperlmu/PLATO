@@ -5,7 +5,7 @@
 %token NOT NEGATION
 %token LESS_THAN GREATER_THAN EQUAL
 %token PLUS MINUS BACKSLASH TIMES DIVIDE PERCENT CARET AND OR 
-%token OVER PRINT RETURN GROUP RING FIELD ADD MULTIPLY
+%token OVER PRINT RETURN GROUP RING FIELD ELEMENTS ADD MULTIPLY
 %token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET IF ELSEIF ELSE
 %token <bool> BOOLEAN
 %token <int> NUMBER
@@ -28,9 +28,11 @@
 
 platoType:
   | BOOLEAN_TYPE { BooleanType }
-	| INTEGER_TYPE  { NumberType("Integers") }
-	| NUMBER_TYPE  { NumberType("Integers") }
-	| NUMBER_TYPE OVER IDENTIFIER { NumberType($3) }
+	| INTEGER_TYPE  { NumberType("field", "Integers") }
+	| NUMBER_TYPE  { NumberType("field", "Integers") }
+	| NUMBER_TYPE OVER GROUP IDENTIFIER { NumberType("group", $4) }
+	| NUMBER_TYPE OVER RING IDENTIFIER { NumberType("ring", $4) }
+	| NUMBER_TYPE OVER FIELD IDENTIFIER { NumberType("field", $4) }
 	| SET_TYPE LESS_THAN platoType GREATER_THAN  { SetLiteralType($3) }
 
 platoFunctionType:
@@ -114,15 +116,15 @@ parameterList:
 	| parameter { [$1] }
 	| parameterWithComma { $1 }
 
-addFunctionHeader:  INTEGER_TYPE ADD LPAREN INTEGER_TYPE IDENTIFIER COMMA INTEGER_TYPE IDENTIFIER RPAREN { { returnType = OtherType(NumberType("Integers"));
+addFunctionHeader:  INTEGER_TYPE ADD LPAREN INTEGER_TYPE IDENTIFIER COMMA INTEGER_TYPE IDENTIFIER RPAREN { { returnType = OtherType(NumberType("field", "Integers"));
 														 functionName = "add";
-														 parameters = [Parameter(NumberType("Integers"), $5); Parameter(NumberType("Integers"), $8)]  } }
+														 parameters = [Parameter(NumberType("field", "Integers"), $5); Parameter(NumberType("field", "Integers"), $8)]  } }
 														
 addFunctionBlock: addFunctionHeader statementBlock { FunctionDeclaration($1, $2) }
 
-multiplyFunctionHeader:  INTEGER_TYPE MULTIPLY LPAREN INTEGER_TYPE IDENTIFIER COMMA INTEGER_TYPE IDENTIFIER RPAREN { { returnType = OtherType(NumberType("Integers"));
+multiplyFunctionHeader:  INTEGER_TYPE MULTIPLY LPAREN INTEGER_TYPE IDENTIFIER COMMA INTEGER_TYPE IDENTIFIER RPAREN { { returnType = OtherType(NumberType("field", "Integers"));
 														 functionName = "multiply";
-														 parameters = [Parameter(NumberType("Integers"), $5); Parameter(NumberType("Integers"), $8)]  } }
+														 parameters = [Parameter(NumberType("field", "Integers"), $5); Parameter(NumberType("field", "Integers"), $8)]  } }
 														
 multiplyFunctionBlock: multiplyFunctionHeader statementBlock { FunctionDeclaration($1, $2) }
 
@@ -148,8 +150,7 @@ groupHeader:
     GROUP IDENTIFIER { GroupHeader($2) }
 		
 groupBody:
-  /* TODO this needs a real set, make sure to update $4 when fixing this */
-     setLiteral SEMICOLON addFunctionBlock { GroupBody($1, $3) }
+     SET_TYPE LESS_THAN INTEGER_TYPE GREATER_THAN ELEMENTS COLON EQUAL setLiteral SEMICOLON addFunctionBlock { GroupBody($8, $10) }
 
 groupBlock: 
     groupHeader OPEN_BRACE groupBody CLOSE_BRACE { GroupDeclaration($1, $3) } 
@@ -159,7 +160,6 @@ extendedGroupHeader:
 	| FIELD IDENTIFIER	{ FieldHeader($2) }		
 
 extendedGroupBody:
-  /* TODO this needs a real set, make sure to update $4 when fixing this */
      groupBody multiplyFunctionBlock { ExtendedGroupBody($1, $2) }
 		
 extendedGroupBlock:

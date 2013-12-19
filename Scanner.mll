@@ -22,6 +22,7 @@ rule token = parse
 	| "GROUP" { GROUP }
 	| "RING" { RING }
 	| "FIELD" { FIELD }
+	| "elements" { ELEMENTS }
 	| "add" { ADD }
 	| "multiply" { MULTIPLY }
 	| "if" { IF }

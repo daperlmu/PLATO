@@ -18,7 +18,7 @@ type operator =
 
 type platoType =
 	| BooleanType
-	| NumberType of string
+	| NumberType of string * string
 	| SetLiteralType of platoType
 	| NeutralType
 

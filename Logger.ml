@@ -23,7 +23,7 @@ let operatorToString = function
 
 let rec typeToString = function
 	| BooleanType -> "Booleans"
-	| NumberType(groupName) -> "Number over " ^ groupName
+	| NumberType(extendeGroupType, groupName) -> "Number over " ^ extendeGroupType ^ groupName
 	| SetLiteralType(subtype) -> "Set of " ^ (typeToString subtype)
 	| NeutralType -> "Neutral Type"
 
@@ -53,7 +53,7 @@ let logOperatorAst operator = logStringToAst (operatorToString operator)
 
 let rec logPlatoTypeAst = function
 	| BooleanType -> logStringToAst "BooleanType"
-	| NumberType(gropuName) -> logListToAst ["Number Type over group "; gropuName]
+	| NumberType(extendeGroupType, groupName) -> logListToAst ["Number Type over group "; extendeGroupType; groupName]
 	| SetLiteralType(subType) -> ignore (logListToAst ["SetLiteral Type of subtype "]); logPlatoTypeAst subType
 	| NeutralType -> logStringToAst "NeutralType"
 
@@ -129,7 +129,7 @@ let logProgramAst = function
 (* Logging for PLATO SAST *)
 let rec typeToString = function
 	| BooleanType -> "Booleans"
-	| NumberType(groupName) -> groupName
+	| NumberType(_, groupName) -> groupName
 	| SetLiteralType(platoType) -> ("SetLiterals<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> "NeutralTypes"
 
@@ -143,7 +143,7 @@ let logOperatorSast operator = logStringToSast (operatorToString operator)
 
 let logPlatoTypeSast = function
 	| BooleanType -> logStringToSast "Boolean Type"
-	| NumberType(groupName) -> logListToSast ["Number Type over group"; groupName]
+	| NumberType(extendedGroupType, groupName) -> logListToSast ["Number Type over group"; extendedGroupType; groupName]
 	| SetLiteralType(platoType) -> logStringToSast ("SetLiterals<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> logStringToSast "Neutral Type"
 

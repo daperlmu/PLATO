@@ -7,8 +7,11 @@ open Filename;;
 
 exception PlatoError of string
 
-let undefinedVariableException variableName =
+let undeclaredVariableException variableName =
 	PlatoError("Undeclared identifier " ^ variableName)
+	
+let redeclaredVariableException variableName =
+	PlatoError("Identifier " ^ variableName ^ " is already declared")	
 
 let castException expressionType  variableType = 
 	PlatoError("Cannot cast from " ^ (typeToString expressionType) ^ " to " ^ (typeToString variableType))
@@ -47,7 +50,7 @@ let rec evaluateSimpleExpression identifierName1 identifierName2 input1 input2 =
 	| Identifier(variableName) ->
 		(if variableName = identifierName1 then input1
 		 else if variableName = identifierName2 then input2
-		 else raise(undefinedVariableException variableName))
+		 else raise(undeclaredVariableException variableName))
 	| Unop(unaryOperator, unopExpression) -> evaluateSimpleUnop (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 unopExpression) unaryOperator
 	| Binop(binaryOperator, binopExpression1, binopExpression2) -> evaluateSimpleBinop (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 binopExpression1) (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 binopExpression2) binaryOperator
 	| _ -> raise(PlatoError("Expressions in groups', rings' or fields' add or multiply can only contain basic arithmetic operators"))
@@ -62,7 +65,7 @@ let evaluateSimpleStatement identifierName1 identifierName2 input1 input2 = func
 	| _ -> raise(PlatoError("Statements in groups', rings' or fields' add or multiply can only be returns"))
 
 let evaluateSimpleBinaryFunction input1 input2 = function
-	| FunctionDeclaration({ returnType = OtherType(NumberType("Integers")); functionName = _; parameters = [Parameter(NumberType("Integers"), identifierName1); Parameter(NumberType("Integers"), identifierName2)]}, StatementBlock([javaStatement])) -> 
+	| FunctionDeclaration({ returnType = OtherType(NumberType("field", "Integers")); functionName = _; parameters = [Parameter(NumberType("field", "Integers"), identifierName1); Parameter(NumberType("field", "Integers"), identifierName2)]}, StatementBlock([javaStatement])) -> 
 		evaluateSimpleStatement identifierName1 identifierName2 input1 input2 javaStatement
 	| _ -> raise(PlatoError("Functions in groups, rings or fields can only be add or multiply"))
 
@@ -72,7 +75,7 @@ let canCast fromType toType =
 	then true
 	else 
 		match toType with
-		| NumberType(_) -> (fromType = NumberType("Integers"))
+		| NumberType(_, _) -> (fromType = NumberType("field", "Integers"))
 		| _ -> false
 
 type symbolTable = {
@@ -89,7 +92,7 @@ let rec findVariable scope variableName =
 
 let updateScope scope variableDeclaration = 
 	let (variableName, _) = variableDeclaration
-	in try ignore (findVariable scope variableName)
+	in try findVariable scope variableName; raise(redeclaredVariableException(variableName))
 	   with Not_found -> 
 			scope.variables <- variableDeclaration :: scope.variables 
 
@@ -121,60 +124,56 @@ let canApplyAnd = function
 	| _ -> false
 
 let canApplyNegation = function
-	| [NumberType(_)] -> true
-	| _ -> false
-
-let canApplyNegation = function
-	| [NumberType(_)] -> true
+	| [NumberType(_, numberType1)] -> true
 	| _ -> false
 
 let canApplyPlus = function
-	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(_, numberType1); NumberType(_, numberType2)] -> (numberType1 = numberType2)
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
 let canApplyMinus = function
-	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(_, numberType1); NumberType(_, numberType2)] -> (numberType1 = numberType2)
 	| _ -> false
 
-(* TODO need to make this work only for rings *)
 let canApplyTimes = function
-	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(extendedGroupType1, numberType1); NumberType(extendedGroupType2, numberType2)] -> 
+		(numberType1 = numberType2) && ((extendedGroupType1 = "ring") || (extendedGroupType1 = "field")) && ((extendedGroupType2 = "ring") || (extendedGroupType2 = "field"))
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
-(* TODO need to make this work only for fields *)
 let canApplyDivide = function
-	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(extendedGroupType1, numberType1); NumberType(extendedGroupType2, numberType2)] -> 
+		(numberType1 = numberType2) && (extendedGroupType1 = "field") && (extendedGroupType2 = "field")
 	| _ -> false
 
 let canApplyMod = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| _ -> false
 
 let canApplyRaise = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
 let canApplyLessThan = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| _ -> false
 
 let canApplyLessThanOrEqual = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| _ -> false
 
 let canApplyGreaterThan = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| _ -> false
 
 let canApplyGreaterThanOrEqual = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| _ -> false
 
 let canApplyEqual = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| _ -> false
 
 let canApplySetDifference = function
@@ -247,54 +246,54 @@ let getOperatorCallClass inputTypeList = function
 	| Or -> "Booleans"
 	| Negation -> 
 		(match inputTypeList with
-		 | [NumberType(groupName)] -> groupName
+		 | [NumberType(_, groupName)] -> groupName
 		 | _ -> raise(operatorException Negation inputTypeList)) 
   | Plus -> 
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Plus inputTypeList)) 
 	| Minus -> 
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Minus inputTypeList)) 
 	| Times -> 
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Times inputTypeList)) 
 	| Divide ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Divide inputTypeList)) 
 	| Mod ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Mod inputTypeList)) 
 	| Raise ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Raise inputTypeList)) 
 	| LessThan -> 
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException LessThan inputTypeList)) 
 	| LessThanOrEqual ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException LessThanOrEqual inputTypeList)) 
 	| GreaterThan ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException GreaterThan inputTypeList)) 
 	| GreaterThanOrEqual ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException GreaterThanOrEqual inputTypeList)) 
 	| Equal ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Equal inputTypeList)) 
 	| SetDifference ->
 		(match inputTypeList with
@@ -303,11 +302,11 @@ let getOperatorCallClass inputTypeList = function
 
 let rec checkExpression environment = function
 	| Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
-	| Number(numberValue) -> TypedNumber(numberValue, NumberType("Integers"))
+	| Number(numberValue) -> TypedNumber(numberValue, NumberType("field", "Integers"))
   | Identifier(variableName) -> 
 		  let variableDeclaration = 
 				try findVariable environment.scope variableName 
-			  with Not_found -> raise (undefinedVariableException variableName)
+			  with Not_found -> raise (undeclaredVariableException variableName)
 		  in  let (_, variableType) = variableDeclaration
 			    in TypedIdentifier(variableName, variableType)
 	| Unop(unaryOperator, unopExpression) ->
@@ -575,8 +574,7 @@ let checkExtendedGroupBlock = function
 	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) -> 
 		  let groupElementList = evaluateSimpleSet groupElements
 			in let additionTable = generateTable groupElementList groupAdditionFunction
-				 in print_table additionTable;
-				    if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable)
+				 in if (isClosed groupElementList additionTable) && (isAssociative groupElementList additionTable)
 				    then let additiveInverseList = generateInverseList groupName groupElementList (getGroupIdentity groupName groupElementList additionTable) additionTable
 			  	        in TypedGroupDeclaration(groupName, groupElementList, additionTable, additiveInverseList)
 			      else raise(PlatoError("Group addition must be closed and associative"))
@@ -880,7 +878,6 @@ let generateJavaCode fileName = function
 			generatePlatoClasses;
 			ignore (List.map (generateJavaClass fileName) javaClassList)
 
-(* TODO: Need to check for correct file extension and existance and permissions for file *)
 let compile fileName =
   let lexbuf = Lexing.from_channel (open_in fileName) 
 	in let programAst = Parser.program Scanner.token lexbuf
@@ -888,8 +885,10 @@ let compile fileName =
 		    let programSast = checkProgram programAst
 		    in logProgramSast programSast; 
 				   let javaClassListAst = createJavaAst programSast
-		       in logJavaClassListAst javaClassListAst; 
-					    generateJavaCode (Filename.chop_extension (Filename.basename fileName)) javaClassListAst
-
+		       in logJavaClassListAst javaClassListAst;
+					    let basename =  Filename.basename fileName
+					    in if (String.sub basename ((String.length basename) - 4) 4) = ".plt"
+							   then generateJavaCode (Filename.chop_extension basename) javaClassListAst
+                 else raise(PlatoError("Invalid file extension"))
 let _ = compile Sys.argv.(1)
 	 
