@@ -1026,7 +1026,7 @@ let rec generateJavaExpression logToJavaFile = function
 			let invokationString = (if String.contains className '.' then className else "(new " ^ className ^ "())")
 			in (if className = ""
 				then 
-					logToJavaFile (invokationString ^ "" ^ methodName ^ "(")
+					logToJavaFile (methodName ^ "(")
 				else 
 					logToJavaFile (invokationString ^ "." ^ methodName ^ "("));
 				(match javaExpressionList with
