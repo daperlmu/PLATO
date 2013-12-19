@@ -118,6 +118,7 @@ let getExpressionType = function
 	| TypedBinop(_, expressionType, _, _) -> expressionType
 	| TypedSet(expressionType, _) -> expressionType
 	| TypedVector(expressionType, _) -> expressionType
+	| TypedVectorRange(_, _, _, _) -> VectorLiteralType(NumberType("field", "Integers"))
 	(*
 	| TypedQuantifier(expressionType, _) -> expressionType
 	*)
@@ -362,9 +363,18 @@ let rec checkExpression environment = function
 				 in let expressionTypeList = List.map getExpressionType vectorExpressionList
 				 	in let headExpressionType = List.hd expressionTypeList
 				 		in if allTrue (List.map (fun arg1 -> (headExpressionType=arg1)) expressionTypeList)
-				 			then TypedVector(VectorLiteralType(List.hd expressionTypeList), vectorExpressionList)
-				 			else raise(heterogeneousVectorLiteralException expressionTypeList)))
-
+				 			 then TypedVector(VectorLiteralType(List.hd expressionTypeList), vectorExpressionList)
+				 			 else raise(heterogeneousVectorLiteralException expressionTypeList)))
+	| VectorRange(fromExpression, toExpression, byExpression) ->
+		let fromExpression, toExpression, byExpression = (checkExpression environment fromExpression), (checkExpression environment toExpression), (checkExpression environment byExpression)
+	  in let fromExpressionType, toExpressionType, byExpressionType = (getExpressionType fromExpression), (getExpressionType toExpression), (getExpressionType byExpression)
+        in if canCast fromExpressionType (NumberType("field", "Integers"))
+				   then if canCast toExpressionType (NumberType("field", "Integers"))
+						     then if canCast byExpressionType (NumberType("field", "Integers"))
+									     then TypedVectorRange(VectorLiteralType(NumberType("field", "Integers")), fromExpression, toExpression, byExpression)
+											else raise(castException byExpressionType (NumberType("field", "Integers")))
+						     else raise(castException byExpressionType (NumberType("field", "Integers")))
+					else raise(castException byExpressionType (NumberType("field", "Integers")))
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
 	| Return(expression) -> TypedReturn(checkExpression environment expression)
@@ -665,6 +675,8 @@ let rec createJavaExpression = function
 		JavaCall("SetLiterals", "newPlatoSet", List.map createJavaExpression setExpressionList)
 	| TypedVector(vectorType, vectorExpressionList) ->
 		JavaCall("VectorLiterals", "newPlatoVector", List.map createJavaExpression vectorExpressionList)
+	| TypedVectorRange(vectorType, fromExpression, toExpression, byExpression) ->
+		JavaCall("VectorLiterals", "newPlatoVectorRange", [createJavaExpression fromExpression; createJavaExpression toExpression; createJavaExpression byExpression])
 
 let rec createJavaStatement = function
 	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))

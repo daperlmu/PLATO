@@ -88,11 +88,8 @@ expression:
 	/*
 	| quantifier IDENTIFIER IN vectorLiteral SATISFIES expr {QuantifierLiteral($1, Identifier($2), $4, $6)}
 	*/
-
-	/*
-	| expression VECTOR_TO expression { VectorRange($3, Number(1)) }
-	| expression VECTOR_TO expression VECTOR_BY expression { VectorRange($3, $5) }
-	*/
+	| OPEN_BRACKET expression VECTOR_TO expression CLOSE_BRACKET { VectorRange($2, $4, Number(1)) }
+	| OPEN_BRACKET expression VECTOR_TO expression VECTOR_BY expression CLOSE_BRACKET { VectorRange($2, $4, $6) }
 	
 
 statement:

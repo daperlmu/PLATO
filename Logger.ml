@@ -72,6 +72,14 @@ let rec logExpressionAst = function
 	| VectorLiteral(expressionList) ->
 		logListToAst ["Vector of"; string_of_int (List.length expressionList);"elements"];
 		ignore (List.map logExpressionAst expressionList)
+	| VectorRange(fromExpression, toExpression, byExpression) ->
+		logStringToAst "Vector range from ";
+    logExpressionAst fromExpression;
+	  logStringToAst " to ";
+    logExpressionAst toExpression;
+	  logStringToAst " by ";
+		logExpressionAst byExpression
+
 
 let logStatementAst = function
 	  Print(printValue) -> logStringToAst "Print"; logExpressionAst(printValue)
@@ -184,6 +192,15 @@ let rec logExpressionSast = function
 		logListToSast ["of type";  typeToString platoType];
 		logStringToSast "containing the expressions";
 		ignore (List.map logExpressionSast expressionList)
+	| TypedVectorRange(vectorType, fromExpression, toExpression, byExpression) ->
+		logStringToSast "vector range ";
+		logListToSast ["of type";  typeToString vectorType];
+	  logStringToSast " from ";
+    logExpressionSast fromExpression;
+	  logStringToSast " to ";
+    logExpressionSast toExpression;
+	  logStringToSast " by ";
+		logExpressionSast byExpression
 
 let logStatementSast = function
 	  TypedPrint(printExpression) -> 

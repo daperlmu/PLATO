@@ -11,6 +11,7 @@ type typedExpression =
 	| TypedBinop of operator * Ast.platoType * typedExpression * typedExpression
 	| TypedSet of Ast.platoType * typedExpression list
 	| TypedVector of Ast.platoType * typedExpression list
+	| TypedVectorRange of Ast.platoType * typedExpression * typedExpression * typedExpression
 
 type typedStatement = 
 	| TypedPrint of typedExpression
@@ -21,9 +22,9 @@ type typedStatement =
 	| TypedVectorAssignment of variableDeclaration * typedExpression * typedExpression
 	| TypedDeclaration of variableDeclaration * typedExpression
 and typedElseIfBlock = 
-	TypedElseIfBlock of typedExpression * typedStatementBlock
+	  TypedElseIfBlock of typedExpression * typedStatementBlock
 and typedElseBlock = 
-	TypedElseBlock of typedStatementBlock
+	  TypedElseBlock of typedStatementBlock
 and typedStatementBlock = 
 	  TypedStatementBlock of typedStatement list
 

@@ -139,6 +139,13 @@ let vectorLiteralsClassString =
     }
     return returnable;
   }
+	public static PlatoVector<Object> newPlatoVectorRange(Object start, Object end, Object increment) {
+  	PlatoVector<Object> returnable = new PlatoVector<Object>();
+  	for(int value = (Integer) start; value <= (Integer) end; value += (Integer) increment) {
+    	returnable.add(new Integer(value));
+    }
+    return returnable;
+  }
   public static Object vectorAccess(PlatoVector<Object> vec, Integer index) {
   	return vec.get(index-1);
   }
