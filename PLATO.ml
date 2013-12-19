@@ -99,7 +99,7 @@ let rec findVariable scope variableName =
 
 let updateScope scope variableDeclaration = 
 	let (variableName, _) = variableDeclaration
-	in try findVariable scope variableName; raise(redeclaredVariableException(variableName))
+	in try ignore(findVariable scope variableName); raise(redeclaredVariableException(variableName))
 	   with Not_found -> 
 			scope.variables <- variableDeclaration :: scope.variables 
 
@@ -367,18 +367,19 @@ let rec checkStatement environment = function
 		in let variableDetails = checkExpression environment variableIdentifier
 			 in let expressionDetails = checkExpression environment newValue
 			     in let expressionType, variableType = (getExpressionType expressionDetails), (getExpressionType variableDetails)
-						  in if canCast (getExpressionType expressionDetails) (getExpressionType variableDetails)
-				         then TypedAssignment((variableName, variableType), expressionDetails) 
+						  in if canCast expressionType variableType
+				             then TypedAssignment((variableName, variableType), expressionDetails) 
 						     else raise(castException expressionType variableType)
-	(*| VectorAssignment(variableName, variableIndex, newValue) -> 
-		let variableIdentifier = Identifier(variableName) 
-		in let variableDetails = checkExpression environment variableIdentifier
-			 in let expressionDetails = checkExpression environment newValue
-			     in let expressionType, variableType = (getExpressionType expressionDetails), (getExpressionType variableDetails)
-						  in if canCast (getExpressionType expressionDetails) (getExpressionType variableDetails)
-				         then TypedVectorAssignment((variableName, variableIndexType, variableType), expressionDetails) 
-						     else raise(castException expressionType variableType)
-	*)
+	| VectorAssignment(variableName, variableIndex, newValue) -> 
+		let variableIdentifier = Identifier(variableName)
+		 in let variableDetails, variableIndexDetails, expressionDetails = (checkExpression environment variableIdentifier), (checkExpression environment variableIndex), (checkExpression environment newValue)
+		     in let variableIndexType, expressionType, variableType = (getExpressionType variableIndexDetails), (getExpressionType expressionDetails), (getExpressionType variableDetails)
+		 		  in (match variableType with
+		 				| VectorLiteralType(variableSubType) -> if ((canCast expressionType variableSubType) 
+				 		  	  && (canCast variableIndexType (NumberType("field", "Integers"))))
+				             then TypedVectorAssignment((variableName, variableType), variableIndexDetails, expressionDetails) 
+				 		     else raise(castException expressionType variableType)
+				 				| _ -> raise(PlatoError("Cannot use vector assignment for non-vector.")))
 	| Declaration(variableType, variableName, newValue) ->
 		let expressionDetails = checkExpression environment newValue
 		   in let expressionType = (getExpressionType expressionDetails)   
@@ -395,13 +396,9 @@ and checkElseBlock environment = function
 	ElseBlock(statementBlock) -> 
 		TypedElseBlock(checkStatementBlock environment statementBlock)
 
-let extractExpressionFromStmt environment = function 
-	| Print(expression) -> checkExpression environment expression
+let extractExpressionFromStmt environment = function
 	| Return(expression) -> checkExpression environment expression
-	| If(expression,_, _, _) -> checkExpression environment expression
-	| IfNoElse(expression, _, _) -> checkExpression environment expression
-  | Assignment(variableName, newValue) -> checkExpression environment newValue 
-	| Declaration(variableType, variableName, newValue) -> checkExpression environment newValue
+	| _ -> raise(PlatoError("Last statement should be a RETURN"))
 
 let checkMainBlock = function
 	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock)
@@ -638,7 +635,7 @@ let checkProgram = function
 (* Convert Sast to Java Ast *)
 let createJavaType = function
 	| BooleanType -> JavaBooleanType
-	| NumberType(_) -> JavaIntType
+	| NumberType(_, _) -> JavaIntType
 	| SetLiteralType(_) -> JavaSetLiteralType
 	| VectorLiteralType(_) -> JavaVectorLiteralType
 	| NeutralType -> JavaNeutralType
@@ -673,6 +670,7 @@ let rec createJavaStatement = function
 							)
 					)
 	| TypedAssignment((variableName, variableType), newValue) -> JavaStatement(JavaAssignment(variableName, createJavaExpression newValue))
+	| TypedVectorAssignment((variableName, variableType), indexValue, newValue) -> JavaStatement(JavaVectorAssignment(variableName, createJavaExpression indexValue, createJavaExpression newValue))
 	| TypedDeclaration((variableName, variableType), newValue) -> JavaStatement(JavaDeclaration(createJavaType variableType, variableName, Some(createJavaExpression newValue)))
 
 and createJavaElseIf = function 
@@ -787,6 +785,12 @@ let rec generateJavaExpression logToJavaFile = function
 	| JavaAssignment(variableName, variableValue) -> 
 		logToJavaFile (variableName ^ "=");
 		generateJavaExpression logToJavaFile variableValue
+	| JavaVectorAssignment(variableName, indexValue, variableValue) -> 
+		logToJavaFile (variableName ^ ".set((");
+		generateJavaExpression logToJavaFile indexValue;
+		logToJavaFile (")-1, ");
+		generateJavaExpression logToJavaFile variableValue;
+		logToJavaFile (")");
 	| JavaDeclaration(variableType, variableName, variableValue) ->
 	  (generateJavaType logToJavaFile variableType;
 		logToJavaFile (variableName ^ "=");
@@ -866,10 +870,10 @@ let generateJavaClass fileName = function
 						     logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
 				         ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
 			           logToJavaFile "}\n"
-			
+
 let generatePlatoCommonClass = 
 	let logToCommonClassFile = logToFileOverwrite false "PlatoCommon.java"
-	in logToCommonClassFile commonClassString 			
+	in logToCommonClassFile commonClassString
 			
 let generatePlatoBooleanClass = 
 	let logToBooleanClassFile = logToFileOverwrite false "Booleans.java"

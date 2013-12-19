@@ -17,11 +17,12 @@ type javaValue =
 
 type javaExpression = 
 	| JavaConstant of javaValue
-  | JavaVariable of string
-  | JavaReturn of javaExpression
-  | JavaIf of javaExpression * javaBlock * javaElseIf list * javaElse
-  | JavaIfNoElse of javaExpression * javaBlock * javaElseIf list
+	| JavaVariable of string
+	| JavaReturn of javaExpression
+	| JavaIf of javaExpression * javaBlock * javaElseIf list * javaElse
+	| JavaIfNoElse of javaExpression * javaBlock * javaElseIf list
 	| JavaAssignment of string * javaExpression
+	| JavaVectorAssignment of string * javaExpression * javaExpression
 	| JavaDeclaration of javaType * string * javaExpression option
 	| JavaCall of string * string * javaExpression list
 and javaElseIf = 

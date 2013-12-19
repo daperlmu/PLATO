@@ -18,9 +18,7 @@ type typedStatement =
 	| TypedIf of typedExpression * typedStatementBlock * typedElseIfBlock list * typedElseBlock
 	| TypedIfNoElse of typedExpression * typedStatementBlock * typedElseIfBlock list
 	| TypedAssignment of variableDeclaration * typedExpression
-	(*
 	| TypedVectorAssignment of variableDeclaration * typedExpression * typedExpression
-	*)
 	| TypedDeclaration of variableDeclaration * typedExpression
 and typedElseIfBlock = 
 	TypedElseIfBlock of typedExpression * typedStatementBlock
