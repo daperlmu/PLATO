@@ -47,6 +47,10 @@ setLiteral:
 	OPEN_BRACE CLOSE_BRACE {SetLiteral([])}
 	| OPEN_BRACE commaSeparatedExpressionNonemptyList CLOSE_BRACE {SetLiteral(List.rev $2)}
 
+vectorLiteral:
+	OPEN_BRACKET CLOSE_BRACKET {SetLiteral([])}
+	| OPEN_BRACKET commaSeparatedExpressionNonemptyList CLOSE_BRACKET {VectorLiteral(List.rev $2)}
+
 quantifier:
 	WHICH_QUANTIFIER {WhichQuantifier}
 	| SOME_QUANTIFIER {SomeQuantifier}
@@ -74,6 +78,7 @@ expression:
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
 	| setLiteral {$1}
 	| LPAREN expression RPAREN { $2 }
+	| vectorLiteral {$1}
 	/*
 	TODO: add quantifiers after vector literals have been implemented
 	| quantifier id IN vectorLiteral SATISFIES expr {QuantifierLiteral($1, $2, $4, $6)}

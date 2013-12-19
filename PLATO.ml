@@ -7,8 +7,9 @@ open Filename;;
 
 exception PlatoError of string
 
-let undeclaredVariableException variableName =
-	PlatoError("Undeclared identifier " ^ variableName)
+let allTrue list = List.fold_left (&&) true list
+
+let undeclaredVariableException variableName = PlatoError("Undeclared identifier " ^ variableName)
 	
 let redeclaredVariableException variableName =
 	PlatoError("Identifier " ^ variableName ^ " is already declared")	
@@ -30,6 +31,9 @@ let voidFunctionHasReturnException functionName = PlatoError("Function: " ^ func
 let missingReturnStmtException functionName functionReturnType = PlatoError("Function: " ^ functionName ^ " is a typed function of type " ^ functionReturnType ^ ". Missing return statement. Expecting return statement of type " ^ functionReturnType ^ ".")
 
 let incompatibleTypesReturnStmt functionName functionReturnType lastStmtType = PlatoError("Return statement incompatible types for the Function: " ^ functionName ^ ". Required: " ^ functionReturnType ^ ". Found: " ^ lastStmtType ^ ".")
+
+let heterogeneousSetLiteralException variableTypes =
+	PlatoError("Set has heterogeneous types: "^(String.concat ", " (List.map typeToString variableTypes)))
 
 (* Intepreter for simple statements *)
 let evaluateSimpleUnop unopValue = function
@@ -129,7 +133,7 @@ let canApplyNegation = function
 
 let canApplyPlus = function
 	| [NumberType(_, numberType1); NumberType(_, numberType2)] -> (numberType1 = numberType2)
-	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
+	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> (arg1=arg2)
 	| _ -> false
 
 let canApplyMinus = function
@@ -327,7 +331,10 @@ let rec checkExpression environment = function
 			[] -> TypedSet(SetLiteralType(NeutralType), [])
 			| _ -> (let setExpressionList =  List.map (checkExpression environment) setopExpressionList
 				 in let expressionTypeList = List.map getExpressionType setExpressionList
-				 	in TypedSet(SetLiteralType(List.hd expressionTypeList), setExpressionList)))
+				 	in let headExpressionType = List.hd expressionTypeList
+				 		in if allTrue (List.map (fun arg1 -> (headExpressionType=arg1)) expressionTypeList)
+				 			then TypedSet(SetLiteralType(List.hd expressionTypeList), setExpressionList)
+				 			else raise(heterogeneousSetLiteralException expressionTypeList)))
 
 let rec checkStatement environment = function
 	| Print(expression) -> TypedPrint(checkExpression environment expression)
@@ -483,9 +490,7 @@ let rec isElement list element =
 	                then true
 									else isElement tail element
 
-let isClosed groupElements groupTable =
-	let allTrue list = List.fold_left (&&) true list
-  in allTrue (List.map (fun intList -> allTrue (List.map (isElement groupElements) intList)) groupTable)	
+let isClosed groupElements groupTable = allTrue (List.map (fun intList -> allTrue (List.map (isElement groupElements) intList)) groupTable)	
 	
 let rec getIndexHelper element list startIndex =
 	match list with 
@@ -768,7 +773,7 @@ let rec generateJavaExpression logToJavaFile = function
 				logToJavaFile ")"
 and generateJavaElseIf logToJavaFile = function
 	  JavaElseIf(javaExpression, javaBlock) ->
-			logToJavaFile "elseif("; 
+			logToJavaFile "else if("; 
 			generateJavaExpression logToJavaFile javaExpression;
 			logToJavaFile ")";
 			generateJavaBlock logToJavaFile javaBlock
