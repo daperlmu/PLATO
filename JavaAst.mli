@@ -18,6 +18,7 @@ type javaExpression =
   | JavaVariable of string
   | JavaReturn of javaExpression
   | JavaIf of javaExpression * javaBlock * javaElseIf list * javaElse
+  | JavaIfNoElse of javaExpression * javaBlock * javaElseIf list
 	| JavaAssignment of string * javaExpression
 	| JavaDeclaration of javaType * string * javaExpression option
 	| JavaCall of string * string * javaExpression list
