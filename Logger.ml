@@ -150,17 +150,17 @@ let logPlatoTypeSast = function
 
 let rec logExpressionSast = function
 	| TypedBoolean(booleanValue, _) -> logListToSast ["Boolean"; string_of_bool booleanValue]
-	| TypedNumber(numberValue, numberType) -> logListToSast ["Number"; string_of_int numberValue; " over "; typeToString numberType]
-  | TypedIdentifier(variableName, variableType) -> logListToSast ["Variable";  variableName; "of type"; typeToString variableType]
+	| TypedNumber(numberValue, numberType) -> logListToSast ["Number"; string_of_int numberValue; " over "; functionTypeToString numberType]
+  | TypedIdentifier(variableName, variableType) -> logListToSast ["Variable";  variableName; "of type"; functionTypeToString variableType]
 	| TypedUnop(unaryOperator, operatorType, operatorExpression) -> 
 		logStringToSast "unary operator"; 
 		logOperatorSast unaryOperator;
-		logListToSast ["of type";  typeToString operatorType];
+		logListToSast ["of type";  functionTypeToString operatorType];
 		logStringToSast "acting on"; 
 		logExpressionSast operatorExpression;
 	| TypedBinop(binaryOperator, operatorType, operatorExpression1, operatorExpression2) -> 
 		logStringToSast "binary operator"; 
-		logListToSast ["of type";  typeToString operatorType];
+		logListToSast ["of type";  functionTypeToString operatorType];
 		logOperatorSast binaryOperator;
 		logStringToSast "acting on";
 		logExpressionSast operatorExpression1;
@@ -168,7 +168,7 @@ let rec logExpressionSast = function
 		logExpressionSast operatorExpression2
 	| TypedSet(platoType, expressionList) ->
 		logStringToSast "set literal";
-		logListToSast ["of type";  typeToString platoType];
+		logListToSast ["of type";  functionTypeToString platoType];
 		logStringToSast "containing the expressions";
 		ignore (List.map logExpressionSast expressionList)
 
@@ -176,7 +176,7 @@ let logStatementSast = function
 	  TypedPrint(printExpression) -> 
 			logStringToSast "Print"; 
 			logExpressionSast(printExpression)
-	| TypedReturn(returnExpression) ->
+	| TypedReturn(_, returnExpression) ->
 			logStringToSast "Return";
 			logExpressionSast(returnExpression)
 	| TypedAssignment((variableName, variableType), newValue) -> 

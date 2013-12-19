@@ -1,10 +1,11 @@
 main() {
 }
 INTEGER lol(INTEGER a, INTEGER b, INTEGER c) {
+	RETURN 0;
 }
 VOID haha(INTEGER a, INTEGER b, INTEGER c) {
 
 }
 lmao(BOOLEAN r, BOOLEAN a){
-	
+	RETURN 0;
 }

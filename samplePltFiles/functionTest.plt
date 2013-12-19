@@ -20,13 +20,19 @@ INTEGER lol(INTEGER a) {
   PRINT qvxy6;
   PRINT ct;
   if(qvxy6=a){
-	INTEGER v := 3;
+	 INTEGER v := 3;
 	}
  elseif(ct < 2){
-	INTEGER f := 5;
+    INTEGER f := 5;
+    if(qvxy6 < 4) {
+      RETURN -10;
+    }
+    elseif(f > 3) {
+      ct := 9;
+    }
 	}
  else {
 	INTEGER e := 6;
 }
-	RETURN a;
+Return 0;
 }

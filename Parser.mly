@@ -37,6 +37,11 @@ platoFunctionType:
 	| VOID_TYPE { VoidType }
   | platoType { OtherType($1) }
 
+commaSeparatedExpression:
+	{ [] }
+	| expression { [$1] }
+	| commaSeparatedExpression COMMA expression { $3::$1 }
+
 commaSeparatedExpressionNonemptyList:
 	expression { [$1] }
 	| commaSeparatedExpressionNonemptyList COMMA expression { $3::$1 }
@@ -72,6 +77,7 @@ expression:
 	| expression EQUAL expression { Binop(Equal, $1, $3) }
 	| setLiteral {$1}
 	| LPAREN expression RPAREN { $2 }
+	| IDENTIFIER LPAREN commaSeparatedExpression RPAREN { FunctionCall($1, List.rev $3) }
 	/*
 	TODO: add quantifiers after vector literals have been implemented
 	| quantifier id IN vectorLiteral SATISFIES expr {QuantifierLiteral($1, $2, $4, $6)}

@@ -6,6 +6,7 @@ open PlatoLibraryStrings;;
 open Filename;;
 
 exception PlatoError of string
+exception DebugException of string
 
 let undefinedVariableException variableName =
 	PlatoError("Undeclared identifier " ^ variableName)
@@ -26,8 +27,15 @@ let voidFunctionHasReturnException functionName = PlatoError("Function: " ^ func
 
 let missingReturnStmtException functionName functionReturnType = PlatoError("Function: " ^ functionName ^ " is a typed function of type " ^ functionReturnType ^ ". Missing return statement. Expecting return statement of type " ^ functionReturnType ^ ".")
 
-let incompatibleTypesReturnStmt functionName functionReturnType lastStmtType = PlatoError("Return statement incompatible types for the Function: " ^ functionName ^ ". Required: " ^ functionReturnType ^ ". Found: " ^ lastStmtType ^ ".")
+let incompatibleTypesReturnStmt functionName functionReturnType  = PlatoError("Return statement incompatible types for the Function: " ^ functionName ^ ". Required: " ^ functionReturnType)
 
+let noneBooleanExpressionInElseIf expressionType = PlatoError("elseif statements expect an expression of type boolean. Actual type of expression: " ^ (typeToString expressionType))
+let noneBooleanExpressionInIf expressionType = PlatoError("if statements expect an expression of type boolean. Actual type of expression: " ^ (typeToString expressionType))
+let unreachableCodeException functionName = PlatoError("Function: " ^ functionName ^ " has unreachable code!")
+
+let functionCallParameterTypeMismatchException functionName = PlatoError("Function call: " ^ functionName ^ " with the list of provided of parameters could not be matched to any existing function.")
+
+let functionNotFoundException functionName = PlatoError("Function: " ^ functionName ^ " NOT_FOUND_EXCEPTION")
 (* Intepreter for simple statements *)
 let evaluateSimpleUnop unopValue = function
 	| Negation -> -unopValue
@@ -83,6 +91,13 @@ type translationEnvironemnt = {
 	scope : symbolTable;
 }
 
+type functionsTable = {
+	mutable functionsList : functionDeclaration list;
+}
+type globalEnvironment = {
+	globalScope : functionsTable;
+}
+
 let rec findVariable scope variableName =
   let finderFunction = (function (name, _) -> name = variableName)
 	in List.find finderFunction scope.variables
@@ -91,11 +106,26 @@ let updateScope scope variableDeclaration =
 	let (variableName, _) = variableDeclaration
 	in try ignore (findVariable scope variableName)
 	   with Not_found -> 
-			scope.variables <- variableDeclaration :: scope.variables 
+			scope.variables <- variableDeclaration :: scope.variables
+
+let getFunctionDeclaration scope functionName = List.find (function (name, _, _) -> name = functionName) scope.functionsList
+
+let isFunctionInEnv scope functionName = 
+	try (ignore (List.find (function (name, _, _) -> name = functionName) scope.functionsList)); true 
+		with Not_found -> false
+
+let updateGlobalScopeWithFunction scope functionName returnType parameterList = 
+	try ignore (List.find (function (name, _, _) -> name = functionName) scope.functionsList)
+		with Not_found ->
+			scope.functionsList <- (functionName, returnType, parameterList) :: scope.functionsList
 
 let emptyEnviroment = 
 	let emptyScope = { variables = [] }
 	in { scope = emptyScope }
+
+let emptyGlobalEnvironment = 
+	let emptyGlobalScope = { functionsList = [] }
+	in { globalScope = emptyGlobalScope }
 
 let convertParamToVarDec = function
 	Parameter(variableType, variableName) -> (variableName, variableType)
@@ -107,6 +137,7 @@ let getExpressionType = function
 	| TypedUnop(_, expressionType, _) -> expressionType
 	| TypedBinop(_, expressionType, _, _) -> expressionType
 	| TypedSet(expressionType, _) -> expressionType
+	| TypedFunctionCall(expressionType, _, _) -> expressionType
 
 let canApplyNot = function
 	| [BooleanType] -> true
@@ -181,23 +212,29 @@ let canApplySetDifference = function
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
-let canApplyOperator inputTypeList = function
-	| Not -> canApplyNot inputTypeList
-	| And -> canApplyAnd inputTypeList
-	| Or -> canApplyOr inputTypeList
-	| Negation -> canApplyNegation inputTypeList
-  | Plus -> canApplyPlus inputTypeList
-	| Minus -> canApplyMinus inputTypeList
-	| Times -> canApplyTimes inputTypeList
-	| Divide -> canApplyDivide inputTypeList
-	| Mod -> canApplyMod inputTypeList
-	| Raise -> canApplyRaise inputTypeList
-	| LessThan -> canApplyLessThan inputTypeList
-	| LessThanOrEqual -> canApplyLessThanOrEqual inputTypeList
-	| GreaterThan -> canApplyGreaterThan inputTypeList
-	| GreaterThanOrEqual -> canApplyGreaterThanOrEqual inputTypeList
-	| Equal -> canApplyEqual inputTypeList
-	| SetDifference -> canApplySetDifference inputTypeList
+let canApplyOperator inputTypeList operatorType =
+	try (ignore (List.find (fun p -> p=VoidType) inputTypeList)); false
+		with Not_found -> 
+			let pltInputTypeList = List.map (fun elem -> match elem with
+													OtherType(pltType) -> pltType
+													| _ -> raise(DebugException("If this point was reached, cannot have voidType"))) inputTypeList
+				in (match operatorType with 
+							| Not -> canApplyNot pltInputTypeList
+							| And -> canApplyAnd pltInputTypeList
+							| Or -> canApplyOr pltInputTypeList
+							| Negation -> canApplyNegation pltInputTypeList
+						  	| Plus -> canApplyPlus pltInputTypeList
+							| Minus -> canApplyMinus pltInputTypeList
+							| Times -> canApplyTimes pltInputTypeList
+							| Divide -> canApplyDivide pltInputTypeList
+							| Mod -> canApplyMod pltInputTypeList
+							| Raise -> canApplyRaise pltInputTypeList
+							| LessThan -> canApplyLessThan pltInputTypeList
+							| LessThanOrEqual -> canApplyLessThanOrEqual pltInputTypeList
+							| GreaterThan -> canApplyGreaterThan pltInputTypeList
+							| GreaterThanOrEqual -> canApplyGreaterThanOrEqual pltInputTypeList
+							| Equal -> canApplyEqual pltInputTypeList
+							| SetDifference -> canApplySetDifference pltInputTypeList)
 
 let getOperatorReturnType inputTypes = function
 	| Not -> BooleanType
@@ -301,79 +338,122 @@ let getOperatorCallClass inputTypeList = function
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Equal inputTypeList)) 
 
-let rec checkExpression environment = function
-	| Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
-	| Number(numberValue) -> TypedNumber(numberValue, NumberType("Integers"))
+let rec checkExpression globalEnv environment = function
+	| Boolean(booleanValue) -> TypedBoolean(booleanValue, OtherType(BooleanType))
+	| Number(numberValue) -> TypedNumber(numberValue, OtherType(NumberType("Integers")))
   | Identifier(variableName) -> 
 		  let variableDeclaration = 
 				try findVariable environment.scope variableName 
 			  with Not_found -> raise (undefinedVariableException variableName)
 		  in  let (_, variableType) = variableDeclaration
-			    in TypedIdentifier(variableName, variableType)
+			    in TypedIdentifier(variableName, OtherType(variableType))
 	| Unop(unaryOperator, unopExpression) ->
-		(let unaryExpression =  checkExpression environment unopExpression
+		(let unaryExpression =  checkExpression globalEnv environment unopExpression
 		 in let expressionTypeList = [getExpressionType unaryExpression]
 		    in if canApplyOperator expressionTypeList unaryOperator
-			     then TypedUnop(unaryOperator, getOperatorReturnType expressionTypeList unaryOperator, unaryExpression)
+			     then TypedUnop(unaryOperator, OtherType(getOperatorReturnType expressionTypeList unaryOperator), unaryExpression)
 			     else raise(operatorException unaryOperator expressionTypeList))
 	| Binop(binaryOperator, binaryExpression1, binaryExpression2) ->
-		(let binaryExpression1 = checkExpression environment binaryExpression1
-		 and binaryExpression2 = checkExpression environment binaryExpression2
+		(let binaryExpression1 = checkExpression globalEnv environment binaryExpression1
+		 and binaryExpression2 = checkExpression globalEnv environment binaryExpression2
      in let expressionTypeList = [getExpressionType binaryExpression2; getExpressionType binaryExpression2]
 		    in if canApplyOperator expressionTypeList binaryOperator
-			     then TypedBinop(binaryOperator, getOperatorReturnType expressionTypeList binaryOperator, binaryExpression1, binaryExpression2)
+			     then TypedBinop(binaryOperator, OtherType(getOperatorReturnType expressionTypeList binaryOperator), binaryExpression1, binaryExpression2)
 			     else raise(operatorException binaryOperator expressionTypeList))
 	| SetLiteral(setopExpressionList) ->
 		(match setopExpressionList with
 			[] -> TypedSet(SetLiteralType(NeutralType), [])
-			| _ -> (let setExpressionList =  List.map (checkExpression environment) setopExpressionList
+			| _ -> (let setExpressionList =  List.map (checkExpression globalEnv environment) setopExpressionList
 				 in let expressionTypeList = List.map getExpressionType setExpressionList
-				 	in TypedSet(SetLiteralType(List.hd expressionTypeList), setExpressionList)))
+				 	in TypedSet(OtherType(SetLiteralType(List.hd expressionTypeList)), setExpressionList)))
+	| FunctionCall(functionName, expressionlist) -> 
+		if isFunctionInEnv globalEnv functionName
+		then
+			let (_, functionType, parameterList) = getFunctionDeclaration globalEnv functionName
+			in let listOfCheckedExpressions = List.map (checkExpression globalEnv environment) expressionList
+				in let listOfExpressionTypes = List.map getExpressionType listOfCheckedExpressions
+					in let listOfTypesOfParams = List.map (fun elem -> match elem with 
+																		Parameter(platoType, _) -> platoType) parameterList
+						(* TODO do pairwise matching based on canCast *)
+						in if listOfExpressionTypes=listOfTypesOfParams
+							then TypedFunctionCall(functionType, functionName, listOfCheckedExpressions)
+							else raise(functionCallParameterTypeMismatchException functionName)
+		else raise(functionNotFoundException functionName)
 
-let rec checkStatement environment = function
-	| Print(expression) -> TypedPrint(checkExpression environment expression)
-	| Return(expression) -> TypedReturn(checkExpression environment expression)
-	| If (expression, statementBlock, elseIfBlockList, elseBlock) -> 
-		TypedIf(checkExpression environment expression, 
-		checkStatementBlock environment statementBlock, 
-		List.map (checkElseIfBlock environment) elseIfBlockList, 
-		checkElseBlock environment elseBlock)
+let getTypedStmtBlockReturnType = function 
+	TypedStatementBlock(typedStatementList) ->
+		if (List.length typedStatementList)=0
+		then VoidType
+		else
+		(* everything but last stmt should have VoidType, otherwise exception *)
+			let lastStmt = List.hd (List.rev typedStatementList)
+			in  ( match lastStmt with
+					TypedReturn(returnType, _) -> returnType
+					| TypedIf(returnType, _, _, _, _) -> returnType
+					| _ -> VoidType )
+let rec checkStatement globalEnv environment = function
+	| Print(expression) -> TypedPrint(checkExpression globalEnv environment expression)
+	| Return(expression) -> 
+		let checkedExpression = checkExpression globalEnv environment expression
+		in TypedReturn(OtherType(getExpressionType checkedExpression), checkedExpression)
+	| If (expression, statementBlock, elseIfBlockList, elseBlock) ->
+		let typedExpression = checkExpression globalEnv environment expression
+		in let expressionType = getExpressionType typedExpression
+			in if canCast expressionType BooleanType
+				then 
+					let checkedStatementBlock = checkStatementBlock globalEnv environment statementBlock
+					in let typeOfLastStmtInBlock = getTypedStmtBlockReturnType checkedStatementBlock 
+						in let checkedElseIfs = List.map (checkElseIfBlock globalEnv environment) elseIfBlockList
+							in let checkedElse = checkElseBlock globalEnv environment elseBlock
+								in if typeOfLastStmtInBlock = VoidType 
+									then TypedIf(VoidType, typedExpression, checkedStatementBlock, checkedElseIfs, checkedElse)
+								else
+									let checkedElseTypedStmtBlock = (match checkedElse with
+																		TypedElseBlock(typedStatementBlock) -> typedStatementBlock)
+										in let checkedElseIfsTypedStmtBlocks = List.map (fun element -> match element with
+																					TypedElseIfBlock(_, typedStatementBlock) -> typedStatementBlock
+																					) checkedElseIfs
+											in let typesOfLastStmtsInElseIfAndElseBlocks = (getTypedStmtBlockReturnType checkedElseTypedStmtBlock)::(List.map getTypedStmtBlockReturnType checkedElseIfsTypedStmtBlocks)
+											in if List.fold_left (fun booleanValue expressionType -> booleanValue && (expressionType = typeOfLastStmtInBlock)) true typesOfLastStmtsInElseIfAndElseBlocks
+												then TypedIf(typeOfLastStmtInBlock, typedExpression, checkedStatementBlock, checkedElseIfs, checkedElse)
+												else TypedIf(VoidType, typedExpression, checkedStatementBlock, checkedElseIfs, checkedElse)
+				else raise(noneBooleanExpressionInIf expressionType)
 	| IfNoElse (expression, statementBlock, elseIfBlockList) -> 
-		TypedIfNoElse(checkExpression environment expression, checkStatementBlock environment statementBlock, List.map (checkElseIfBlock environment) elseIfBlockList)
+		let typedExpression = checkExpression globalEnv environment expression
+		in let expressionType = getExpressionType typedExpression
+			in if canCast expressionType BooleanType
+				then TypedIfNoElse(typedExpression, checkStatementBlock globalEnv environment statementBlock, List.map (checkElseIfBlock globalEnv environment) elseIfBlockList)
+				else raise(noneBooleanExpressionInIf expressionType)
   | Assignment(variableName, newValue) -> 
 		let variableIdentifier = Identifier(variableName) 
-		in let variableDetails = checkExpression environment variableIdentifier
-			 in let expressionDetails = checkExpression environment newValue
+		in let variableDetails = checkExpression globalEnv environment variableIdentifier
+			 in let expressionDetails = checkExpression globalEnv environment newValue
 			     in let expressionType, variableType = (getExpressionType expressionDetails), (getExpressionType variableDetails)
 						  in if canCast (getExpressionType expressionDetails) (getExpressionType variableDetails)
 				         then TypedAssignment((variableName, variableType), expressionDetails) 
 						     else raise(castException expressionType variableType)
 	| Declaration(variableType, variableName, newValue) ->
-		let expressionDetails = checkExpression environment newValue
+		let expressionDetails = checkExpression globalEnv environment newValue
 		   in let expressionType = (getExpressionType expressionDetails)  
 			    in if canCast expressionType variableType
 			       then (updateScope environment.scope (variableName, variableType);
 						       TypedDeclaration((variableName, variableType), expressionDetails))
 					   else raise(castException expressionType variableType)
-and checkStatementBlock environment = function
-	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement environment) statementList)
-and checkElseIfBlock environment = function 
+and checkStatementBlock globalEnv environment = function
+	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement globalEnv environment) statementList)
+and checkElseIfBlock globalEnv environment = function 
 	ElseIfBlock(expression, statementBlock) -> 
-		TypedElseIfBlock(checkExpression environment expression, checkStatementBlock environment statementBlock)
-and checkElseBlock environment = function 
+		let typedExpression = checkExpression globalEnv environment expression
+		in let expressionType = getExpressionType typedExpression
+			in if canCast expressionType BooleanType
+				then TypedElseIfBlock(typedExpression, checkStatementBlock globalEnv environment statementBlock)
+				else raise(noneBooleanExpressionInElseIf expressionType)
+and checkElseBlock globalEnv environment = function 
 	ElseBlock(statementBlock) -> 
-		TypedElseBlock(checkStatementBlock environment statementBlock)
+		TypedElseBlock(checkStatementBlock globalEnv environment statementBlock)
 
-let extractExpressionFromStmt environment = function 
-	| Print(expression) -> checkExpression environment expression
-	| Return(expression) -> checkExpression environment expression
-	| If(expression,_, _, _) -> checkExpression environment expression
-	| IfNoElse(expression, _, _) -> checkExpression environment expression
-  | Assignment(variableName, newValue) -> checkExpression environment newValue 
-	| Declaration(variableType, variableName, newValue) -> checkExpression environment newValue
-
-let checkMainBlock = function
-	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock emptyEnviroment mainBlock)
+let checkMainBlock globalEnv = function
+	  MainBlock(mainBlock) -> TypedMainBlock(checkStatementBlock globalEnv emptyEnviroment mainBlock)
 
 let rec getReturnStmtsHelper = function 
 	[] -> []
@@ -385,22 +465,26 @@ let getReturnStmts = function
 	StatementBlock(statementList) -> 
 		getReturnStmtsHelper(statementList)
 
-let checkVoidFunction = function 
-	FunctionDeclaration(functionHeader, statementBlock) ->
-		let returnStmtsInFunctionBlock = getReturnStmts statementBlock
-			in let functionEnvironment = emptyEnviroment 
-			   in if (List.length returnStmtsInFunctionBlock)=0
-			  	  then (ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
-			  			 TypedFunctionDeclaration(functionHeader, checkStatementBlock functionEnvironment statementBlock))
-			  	  else raise(voidFunctionHasReturnException functionHeader.functionName)
-
 let getLastStmtInBlock = function
 	StatementBlock(statementList) -> List.hd (List.rev statementList)
 
-let checkFunctionBlock = function
+let functionTypeToString = function 
+	VoidType -> "void"
+	| OtherType(pltType) -> typeToString pltType
+let checkFunctionBlock globalEnv = function
 	  FunctionDeclaration(functionHeader, statementBlock) -> 
 	  	let functionReturnType = functionHeader.returnType
-		  			in (match functionReturnType with
+	  		in let functionEnvironment = emptyEnviroment
+	  		   in (ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters)));
+	  		   		(ignore (updateGlobalScopeWithFunction globalEnv.globalScope functionHeader.functionName functionHeader.returnType functionHeader.parameters));
+	  		   		(*(ignore updateGlobalScope);*)
+	  			   let checkedStatementBlock = checkStatementBlock globalEnv functionEnvironment statementBlock
+	  			 	in let stmtBlockReturnType = getTypedStmtBlockReturnType checkedStatementBlock
+	  					in if(functionReturnType=stmtBlockReturnType)
+	  						then  
+	  							TypedFunctionDeclaration(functionHeader, checkedStatementBlock)
+	  						else raise(incompatibleTypesReturnStmt functionHeader.functionName (functionTypeToString functionHeader.returnType))
+		  			(* in (match functionReturnType with
 		  					VoidType -> checkVoidFunction (FunctionDeclaration(functionHeader, statementBlock))
 		  					| OtherType(returnType) -> 
 		  						let functionEnvironment = emptyEnviroment
@@ -410,32 +494,16 @@ let checkFunctionBlock = function
 	  									else
   											(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
 		  										let checkedStatementBlock = checkStatementBlock functionEnvironment statementBlock
-		  										(* 
-													ALGORITHM:
-													If there is an else block:
-														if it has a return statement then:
-															If the return statement in the else block is not the last statement in the else block, then raise(unreachable statement exception)
-															-A return statement at the end of the function is not necessary iff:
-																- For all other if and elseif blocks, there is a return statement at the end of every block respectively.
-																	- If for any of the if or elseif blocks, the return statement is not the last statement, then raise(unreachable statement exception)
-
-															If you reach this point, no exceptions have been raised, meaning the function safely returns a value no matter what.
-
-														else if it does not have a return statement then:
-															- Run through the current function validation code.
-
-		  										 *)
+		  										
 				  								in let lastStmt = getLastStmtInBlock statementBlock
 				  								   in let lastStmtType = getExpressionType (extractExpressionFromStmt functionEnvironment lastStmt)
 				  									  in if not (lastStmtType=returnType)
 				  										 then raise(incompatibleTypesReturnStmt functionHeader.functionName (typeToString returnType) (typeToString lastStmtType))
-				  										 else TypedFunctionDeclaration(functionHeader, checkedStatementBlock))
+				  										 else TypedFunctionDeclaration(functionHeader, checkedStatementBlock)) *)
 				  												(*  - check if the returned expression can be cast up to the function's expected return type
 				  													- need to check all return statements in the function to make sure they are type compatible with the expected return type
 				  													- Check if last statement is actually a return statement
 				  												- check for unreachable code *)
-
-		  					)
 
 let rec generateTableHelper rowElements columnElements tableFunction tableSoFar =
 	match rowElements with
@@ -603,8 +671,10 @@ let checkExtendedGroupBlock = function
 									        else raise(PlatoError("Field multiplication must be closed, associative, commutative and distribute over addition"))
 				    else raise(PlatoError("Field addition must be closed and associative"))
 			   
-let checkProgram = function
-	  Program(mainBlock, functionBlockList, extendedGroupBlockList) -> TypedProgram(checkMainBlock mainBlock, List.map checkFunctionBlock functionBlockList, List.map checkExtendedGroupBlock extendedGroupBlockList)	 
+let checkProgram globalEnv = function
+	  Program(mainBlock, functionBlockList, extendedGroupBlockList) -> 
+	  let checkedFunctionBlockList = List.map checkFunctionBlock globalEnv functionBlockList
+	  in TypedProgram(checkMainBlock globalEnv mainBlock, checkedFunctionBlockList, List.map checkExtendedGroupBlock extendedGroupBlockList)	 
 
 (* Convert Sast to Java Ast *)
 let createJavaType = function
@@ -622,11 +692,13 @@ let rec createJavaExpression = function
 		JavaCall(getOperatorCallClass [getExpressionType binaryExpression1; getExpressionType binaryExpression2] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
 	| TypedSet(setType, setExpressionList) ->
 		JavaCall("SetLiterals", "newPlatoSet", List.map createJavaExpression setExpressionList)
+	| TypedFunctionCall(platoFunctionType, functionName, expressionList) -> 
+		JavaCall()
 
 let rec createJavaStatement = function
 	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
-	| TypedReturn(expression) -> JavaStatement(JavaReturn(createJavaExpression expression))
-	| TypedIf(typedExpression, typedStatementBlock, typedElseIfBlockList, typedElseBlock) -> 
+	| TypedReturn(_, expression) -> JavaStatement(JavaReturn(createJavaExpression expression))
+	| TypedIf(_, typedExpression, typedStatementBlock, typedElseIfBlockList, typedElseBlock) -> 
 					JavaStatement(
 						JavaIf(createJavaExpression typedExpression,
 								createJavaBlock typedStatementBlock,
@@ -760,7 +832,11 @@ let rec generateJavaExpression logToJavaFile = function
 		  | None -> () (* do nothing *))
 	| JavaCall(className, methodName, javaExpressionList) -> 
 			let invokationString = (if String.contains className '.' then className else "(new " ^ className ^ "())")
-			in logToJavaFile (invokationString ^ "." ^ methodName ^ "(");
+			in (if className = ""
+				then 
+					logToJavaFile (invokationString ^ "" ^ methodName ^ "(")
+				else 
+					logToJavaFile (invokationString ^ "." ^ methodName ^ "("));
 				(match javaExpressionList with
 					[] -> ()
 					| [first] -> ignore (generateJavaExpression logToJavaFile first)
@@ -884,7 +960,7 @@ let compile fileName =
   let lexbuf = Lexing.from_channel (open_in fileName) 
 	in let programAst = Parser.program Scanner.token lexbuf
 	   in logProgramAst programAst; 
-		    let programSast = checkProgram programAst
+		    let programSast = checkProgram emptyGlobalEnvironment programAst
 		    in logProgramSast programSast; 
 				   let javaClassListAst = createJavaAst programSast
 		       in logJavaClassListAst javaClassListAst; 

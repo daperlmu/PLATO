@@ -38,6 +38,7 @@ type expression =
 	| Unop of operator * expression
 	| Binop of operator * expression * expression
 	| SetLiteral of expression list
+	| FunctionCall of string * expression list
 
 type statement =
 	| Print of expression

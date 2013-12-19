@@ -2,19 +2,22 @@ open Ast;;
 
 type  variableDeclaration = 
 	  string * Ast.platoType
+type functionDeclaration = 
+		string * Ast.platoType * Ast.parameter list
 
 type typedExpression = 
-	| TypedBoolean of bool * Ast.platoType
-	| TypedNumber of int * Ast.platoType
-  | TypedIdentifier of string  * Ast.platoType
-	| TypedUnop of operator * Ast.platoType * typedExpression
-	| TypedBinop of operator * Ast.platoType * typedExpression * typedExpression
-	| TypedSet of Ast.platoType * typedExpression list
+	| TypedBoolean of bool * Ast.platoFunctionType
+	| TypedNumber of int * Ast.platoFunctionType
+  | TypedIdentifier of string  * Ast.platoFunctionType
+	| TypedUnop of operator * Ast.platoFunctionType * typedExpression
+	| TypedBinop of operator * Ast.platoFunctionType * typedExpression * typedExpression
+	| TypedSet of Ast.platoFunctionType * typedExpression list
+	| TypedFunctionCall of Ast.platoFunctionType * string * typedExpression list
 
 type typedStatement = 
 	| TypedPrint of typedExpression
-	| TypedReturn of typedExpression
-	| TypedIf of typedExpression * typedStatementBlock * typedElseIfBlock list * typedElseBlock
+	| TypedReturn of Ast.platoFunctionType * typedExpression
+	| TypedIf of Ast.platoFunctionType * typedExpression * typedStatementBlock * typedElseIfBlock list * typedElseBlock
 	| TypedIfNoElse of typedExpression * typedStatementBlock * typedElseIfBlock list
 	| TypedAssignment of variableDeclaration * typedExpression      
 	| TypedDeclaration of variableDeclaration * typedExpression
