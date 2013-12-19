@@ -1,67 +1,213 @@
 (* TODO casting here *)
 let commonClassString = 
-	"public class PlatoCommon { \n
-	  public Object cast(Object object, String fromType, String toType) { \n
-		  if (fromType.equals(toType)) { \n
+	"public class PlatoCommon { 
+	  public Object cast(Object object, String fromType, String toType) { 
+		  if (fromType.equals(toType)) { 
 				return object;
-			} else { \n
+			} else { 
 			  return null
-			}\n
-		}\n
+			}
+		}
 	}"
-		
 
 let booleanClassString = 
-		"public class Booleans { \n
-		  public Boolean not(Boolean bool) {\n
-			  return !bool;\n
-			}\n
-		  public Boolean or(Boolean bool1, Boolean bool2) {\n
-			  return bool1 || bool2;\n
-			}\n
-			public Boolean and(Boolean bool1, Boolean bool2) {\n
-			  return bool1 && bool2;\n
-			}\n
+		"public class Booleans { 
+		  public Boolean not(Object bool) {
+			  return !((Boolean)bool);
+			}
+			public PlatoVector<Object> not(PlatoVector<Object> bools) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add(!(Boolean)bool);
+			  } 
+				return returnable;
+			}
+		  public Boolean or(Object bool1, Object bool2) {
+			  return ((Boolean)bool1) || ((Boolean)bool2);
+			}
+			public PlatoVector<Object> or(PlatoVector<Object> bools, Object bool2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add((Boolean)bool || (Boolean)bool2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> or(Object bool2, PlatoVector<Object> bools) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add((Boolean)bool || (Boolean)bool2);
+			  } 
+				return returnable;
+			}
+			public Boolean and(Object bool1, Object bool2) {
+			  return ((Boolean)bool1) && ((Boolean)bool2);
+			}
+			public PlatoVector<Object> and(PlatoVector<Object> bools, Object bool2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add((Boolean)bool && (Boolean)bool2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> and(Object bool2, PlatoVector<Object> bools) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object bool : bools) {
+					returnable.add((Boolean)bool && (Boolean)bool2);
+			  } 
+				return returnable;
+			}
 		}"
-		
+
 let integerClassString = 
-		"public class Integers { \n
-		  public Integer negation(Integer integer) {\n
-			  return -integer;\n
-			}\n
-		  public Integer plus(Integer integer1, Integer integer2) {\n
-			  return integer1 + integer2;\n
-			}\n
-		  public Integer minus(Integer integer1, Integer integer2) {\n
-			  return integer1 - integer2;\n
-			}\n
-		  public Integer times(Integer integer1, Integer integer2) {\n
-			  return integer1 * integer2;\n
-			}\n
-		  public Integer divide(Integer integer1, Integer integer2) {\n
-			  return integer1 / integer2;\n
-			}\n
-		  public Integer mod(Integer integer1, Integer integer2) {\n
-			  return integer1 % integer2;\n
-			}\n
-		  public Integer raise(Integer integer1, Integer integer2) {\n
-			  return (int) Math.pow(integer1, integer2);\n
-			}\n
-		  public Boolean lessThan(Integer integer1, Integer integer2) {\n
-			  return integer1 < integer2;\n
-			}\n
-		  public Boolean lessThanOrEqual(Integer integer1, Integer integer2) {\n
-			  return integer1 <= integer2;\n
-			}\n
-		  public Boolean greaterThan(Integer integer1, Integer integer2) {\n
-			  return integer1 > integer2;\n
-			}\n
-		  public Boolean greaterThanOrEqual(Integer integer1, Integer integer2) {\n
-			  return integer1 >= integer2;\n
-			}\n
-		  public Boolean equal(Integer integer1, Integer integer2) {\n
-			  return integer1 == integer2;\n
-			}\n
+		"public class Integers { 
+		  public Integer negation(Integer integer) {
+			  return -integer;
+			}
+			public PlatoVector<Object> negation(PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add(-(Integer)intVal);
+			  } 
+				return returnable;
+			}
+		  public Integer plus(Object integer1, Object integer2) {
+			  return ((Integer)integer1) + ((Integer)integer2);
+			}
+			public PlatoVector<Object> plus(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal + (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> plus(Object intVal2, PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal + (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Integer minus(Object integer1, Object integer2) {
+			  return ((Integer)integer1) - ((Integer)integer2);
+			}
+			public PlatoVector<Object> minus(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal - (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Integer times(Object integer1, Object integer2) {
+			  return ((Integer)integer1) * ((Integer)integer2);
+			}
+			public PlatoVector<Object> times(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal * (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> times(Object intVal2, PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal * (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Integer divide(Object integer1, Object integer2) {
+			  return ((Integer)integer1) / ((Integer)integer2);
+			}
+			public PlatoVector<Object> divide(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal / (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Integer mod(Object integer1, Object integer2) {
+			  return ((Integer)integer1) % ((Integer)integer2);
+			}
+			public PlatoVector<Object> mod(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal % (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> mod(Object intVal2, PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal % (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Integer raise(Object integer1, Object integer2) {
+			  return (int) Math.pow((Integer)integer1, (Integer)integer2);
+			}
+			public PlatoVector<Object> raise(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((int) Math.pow((Integer)intVal, (Integer)intVal2));
+			  } 
+				return returnable;
+			}
+		  public Boolean lessThan(Object integer1, Object integer2) {
+			  return ((Integer)integer1) < ((Integer)integer2);
+			}
+			public PlatoVector<Object> lessThan(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal < (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Boolean lessThanOrEqual(Object integer1, Object integer2) {
+			  return ((Integer)integer1) <= ((Integer)integer2);
+			}
+			public PlatoVector<Object> lessThanOrEqual(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal <= (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Boolean greaterThan(Object integer1, Object integer2) {
+			  return ((Integer)integer1) > ((Integer)integer2);
+			}
+			public PlatoVector<Object> greaterThan(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal > (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Boolean greaterThanOrEqual(Object integer1, Object integer2) {
+			  return ((Integer)integer1) >= ((Integer)integer2);
+			}
+			public PlatoVector<Object> greaterThanOrEqual(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add((Integer)intVal >= (Integer)intVal2);
+			  } 
+				return returnable;
+			}
+		  public Boolean equal(Object integer1, Object integer2) {
+			  return ((Integer)integer1).equals(((Integer)integer2));
+			}
+			public PlatoVector<Object> equal(PlatoVector<Object> intVals, Object intVal2) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add(((Integer)intVal).equals((Integer)intVal2));
+			  } 
+				return returnable;
+			}
+			public PlatoVector<Object> equal(Object intVal2, PlatoVector<Object> intVals) {
+			  PlatoVector<Object> returnable = new PlatoVector<Object>();
+				for (Object intVal : intVals) {
+					returnable.add(((Integer)intVal).equals((Integer)intVal2));
+			  } 
+				return returnable;
+			}
 		}"
 
 let setLiteralsClassString = 
@@ -131,42 +277,77 @@ public class PlatoSet<T> extends HashSet<T> {
   }
 }"
 
+let vectorLiteralsClassString = 
+"public class VectorLiterals {
+  public static PlatoVector<Object> newPlatoVector(Object ... objects) {
+  	PlatoVector<Object> returnable = new PlatoVector<Object>();
+  	for(Object object : objects) {
+    	returnable.add(object);
+    }
+    return returnable;
+  }
+	public static PlatoVector<Object> newPlatoVectorRange(Object start, Object end, Object increment) {
+  	PlatoVector<Object> returnable = new PlatoVector<Object>();
+  	for(int value = (Integer) start; value <= (Integer) end; value += (Integer) increment) {
+    	returnable.add(new Integer(value));
+    }
+    return returnable;
+  }
+  public static Object vectorAccess(PlatoVector<Object> vec, Integer index) {
+  	return vec.get(index-1);
+  }
+	public static PlatoVector vectorAccess(PlatoVector<Object> vec, PlatoVector<Object> indexer) {
+  	PlatoVector<Object> returnable = new PlatoVector<Object>();
+		for (int index = 0; index < vec.size(); index++) {
+		  if ((Boolean) indexer.get(index)) {
+				returnable.add(vec.get(index));
+			}
+		}
+		return returnable;
+  }
+}"
+
+let platoVectorClassString = 
+"import java.util.ArrayList;
+public class PlatoVector<T> extends ArrayList<T> {
+}"
+
 let groupClassString =
-	"import java.util.*;\n
-  \n
-	public class Groups {\n
-	  protected Map<String, String> additionTable;\n
-	  protected Map<String, String> additiveInverseList;\n
-	  \n
-	  public Integer plus(Integer number1, Integer number2) {\n
-	    return Integer.parseInt(additionTable.get(Integer.toString(number1) + \",\" + Integer.toString(number2)));\n 
-	  }\n
-	  \n
-	  public Integer minus(Integer number1, Integer number2) {\n
-		  return plus(number1, Integer.parseInt(additiveInverseList.get(Integer.toString(number2))));\n
-	  }\n
-	}\n"
+	"import java.util.*;
+  
+	public class Groups {
+	  protected Map<String, String> additionTable;
+	  protected Map<String, String> additiveInverseList;
+	  
+	  public Integer plus(Object number1, Object number2) {
+	    return Integer.parseInt(additionTable.get(Integer.toString((Integer)number1) + \",\" + Integer.toString((Integer)number2))); 
+	  }
+	  
+	  public Integer minus(Integer number1, Integer number2) {
+		  return plus(number1, Integer.parseInt(additiveInverseList.get(Integer.toString(number2))));
+	  }
+	}"
 
 let ringClassString = 
-	"import java.util.*;\n
-	public class Rings extends Groups {\n
-	  protected Map<String, String> multiplicationTable;\n
-	  \n
-	  public Integer times(Integer number1, Integer number2) {\n
-	    return Integer.parseInt(multiplicationTable.get(Integer.toString(number1) + \",\" + Integer.toString(number2)));\n 
-	  }\n
-	}\n"
-	
+	"import java.util.*;
+	public class Rings extends Groups {
+	  protected Map<String, String> multiplicationTable;
+	  
+	  public Integer times(Object number1, Object number2) {
+	    return Integer.parseInt(multiplicationTable.get(Integer.toString((Integer)number1) + \",\" + Integer.toString((Integer)number2))); 
+	  }
+	}"
+
 let fieldClassString = 
-	"import java.util.*;\n
-	public class Fields extends Rings {\n
-	  protected Integer additiveIdentity;\n
-	  protected Map<String, String> multiplicitiveInverseList;\n
-	  \n
-	  public Integer divide(Integer number1, Integer number2) {\n
-		  if (number2.equals(additiveIdentity)) {\n
-		    throw new ArithmeticException(\"Division by zero\");\n
-	    }\n
-		  return times(number1, Integer.parseInt(multiplicitiveInverseList.get(Integer.toString(number2))));\n
-	  }\n
-	}\n"
+	"import java.util.*;
+	public class Fields extends Rings {
+	  protected Integer additiveIdentity;
+	  protected Map<String, String> multiplicitiveInverseList;
+	  
+	  public Integer divide(Object number1, Object number2) {
+		  if (number2.equals(additiveIdentity)) {
+		    throw new ArithmeticException(\"Division by zero\");
+	    }
+		  return times((Integer)number1, Integer.parseInt(multiplicitiveInverseList.get(Integer.toString((Integer)number2))));
+	  }
+	}"

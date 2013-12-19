@@ -8,14 +8,18 @@ open Filename;;
 exception PlatoError of string
 exception DebugException of string
 
-let undefinedVariableException variableName =
-	PlatoError("Undeclared identifier " ^ variableName)
+let allTrue list = List.fold_left (&&) true list
+
+let undeclaredVariableException variableName = PlatoError("Undeclared identifier " ^ variableName)
+	
+let redeclaredVariableException variableName =
+	PlatoError("Identifier " ^ variableName ^ " is already declared")	
 
 let castException expressionType  variableType = 
 	PlatoError("Cannot cast from " ^ (typeToString expressionType) ^ " to " ^ (typeToString variableType))
 		
 let operatorException operator inputTypeList = 
-	PlatoError("Cannot apply " ^ (operatorToString operator) ^ " to type " ^ (String.concat ", " (List.map typeToString inputTypeList)))
+	PlatoError("Cannot apply " ^ (operatorToString operator) ^ " to types " ^ (String.concat ", " (List.map typeToString inputTypeList)))
 
 let identityException groupName =
 	PlatoError("Error while generating group, ring or field " ^ groupName ^ ".  Could not find identity element")
@@ -36,6 +40,12 @@ let unreachableCodeException functionName = PlatoError("Function: " ^ functionNa
 let functionCallParameterTypeMismatchException functionName = PlatoError("Function call: " ^ functionName ^ " with the list of provided of parameters could not be matched to any existing function.")
 
 let functionNotFoundException functionName = PlatoError("Function: " ^ functionName ^ " NOT_FOUND_EXCEPTION")
+let heterogeneousSetLiteralException variableTypes =
+	PlatoError("Set has heterogeneous types: "^(String.concat ", " (List.map typeToString variableTypes)))
+
+let heterogeneousVectorLiteralException variableTypes =
+	PlatoError("Vector has heterogeneous types: "^(String.concat ", " (List.map typeToString variableTypes)))
+
 (* Intepreter for simple statements *)
 let evaluateSimpleUnop unopValue = function
 	| Negation -> -unopValue
@@ -55,7 +65,7 @@ let rec evaluateSimpleExpression identifierName1 identifierName2 input1 input2 =
 	| Identifier(variableName) ->
 		(if variableName = identifierName1 then input1
 		 else if variableName = identifierName2 then input2
-		 else raise(undefinedVariableException variableName))
+		 else raise(undeclaredVariableException variableName))
 	| Unop(unaryOperator, unopExpression) -> evaluateSimpleUnop (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 unopExpression) unaryOperator
 	| Binop(binaryOperator, binopExpression1, binopExpression2) -> evaluateSimpleBinop (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 binopExpression1) (evaluateSimpleExpression identifierName1 identifierName2 input1 input2 binopExpression2) binaryOperator
 	| _ -> raise(PlatoError("Expressions in groups', rings' or fields' add or multiply can only contain basic arithmetic operators"))
@@ -70,7 +80,7 @@ let evaluateSimpleStatement identifierName1 identifierName2 input1 input2 = func
 	| _ -> raise(PlatoError("Statements in groups', rings' or fields' add or multiply can only be returns"))
 
 let evaluateSimpleBinaryFunction input1 input2 = function
-	| FunctionDeclaration({ returnType = OtherType(NumberType("Integers")); functionName = _; parameters = [Parameter(NumberType("Integers"), identifierName1); Parameter(NumberType("Integers"), identifierName2)]}, StatementBlock([javaStatement])) -> 
+	| FunctionDeclaration({ returnType = OtherType(NumberType("field", "Integers")); functionName = _; parameters = [Parameter(NumberType("field", "Integers"), identifierName1); Parameter(NumberType("field", "Integers"), identifierName2)]}, StatementBlock([javaStatement])) -> 
 		evaluateSimpleStatement identifierName1 identifierName2 input1 input2 javaStatement
 	| _ -> raise(PlatoError("Functions in groups, rings or fields can only be add or multiply"))
 
@@ -80,7 +90,7 @@ let canCast fromType toType =
 	then true
 	else 
 		match toType with
-		| NumberType(_) -> (fromType = NumberType("Integers"))
+		| NumberType(_, _) -> (fromType = NumberType("field", "Integers"))
 		| _ -> false
 
 type symbolTable = {
@@ -104,7 +114,7 @@ let rec findVariable scope variableName =
 
 let updateScope scope variableDeclaration = 
 	let (variableName, _) = variableDeclaration
-	in try ignore (findVariable scope variableName)
+	in try ignore(findVariable scope variableName); raise(redeclaredVariableException(variableName))
 	   with Not_found -> 
 			scope.variables <- variableDeclaration :: scope.variables
 
@@ -130,86 +140,124 @@ let emptyGlobalEnvironment =
 let convertParamToVarDec = function
 	Parameter(variableType, variableName) -> (variableName, variableType)
 
-let getExpressionType = function 
-	| TypedBoolean(_, expressionType) -> expressionType
-	| TypedNumber(_, expressionType) -> expressionType
-  | TypedIdentifier(_, expressionType) -> expressionType
-	| TypedUnop(_, expressionType, _) -> expressionType
-	| TypedBinop(_, expressionType, _, _) -> expressionType
-	| TypedSet(expressionType, _) -> expressionType
+let getExpressionType = function
+	| TypedBoolean(_, expressionType) -> OtherType(expressionType)
+	| TypedNumber(_, expressionType) -> OtherType(expressionType)
+	| TypedIdentifier(_, expressionType) -> OtherType(expressionType)
+	| TypedUnop(_, expressionType, _) -> OtherType(expressionType)
+	| TypedBinop(_, expressionType, _, _) -> OtherType(expressionType)
+	| TypedSet(expressionType, _) -> OtherType(expressionType)
 	| TypedFunctionCall(expressionType, _, _) -> expressionType
+	| TypedVector(expressionType, _) -> OtherType(expressionType)
+	| TypedVectorRange(_, _, _, _) -> OtherType(VectorLiteralType(NumberType("field", "Integers")))
+	(*
+	| TypedQuantifier(expressionType, _) -> expressionType
+	*)
 
 let canApplyNot = function
 	| [BooleanType] -> true
+	| [VectorLiteralType(BooleanType)] -> true
 	| _ -> false
 
 let canApplyOr = function
 	| [BooleanType; BooleanType] -> true
+	| [VectorLiteralType(BooleanType); BooleanType] -> true
+	| [BooleanType; VectorLiteralType(BooleanType)] -> true
 	| _ -> false
 
 let canApplyAnd = function
 	| [BooleanType; BooleanType] -> true
+	| [VectorLiteralType(BooleanType); BooleanType] -> true
+	| [BooleanType; VectorLiteralType(BooleanType)] -> true
 	| _ -> false
 
 let canApplyNegation = function
-	| [NumberType(_)] -> true
-	| _ -> false
-
-let canApplyNegation = function
-	| [NumberType(_)] -> true
+	| [NumberType(_, _)] -> true	
+	| [VectorLiteralType(NumberType(_, _))] -> true
 	| _ -> false
 
 let canApplyPlus = function
-	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
-	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
+	| [NumberType(_, numberType1); NumberType(_, numberType2)] -> (numberType1 = numberType2)
+	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> (arg1=arg2)
+	| [VectorLiteralType(NumberType(_, numberType1)); NumberType(_, numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(_, numberType1); VectorLiteralType(NumberType(_, numberType2))] -> (numberType1 = numberType2)
 	| _ -> false
 
 let canApplyMinus = function
-	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(_, numberType1); NumberType(_, numberType2)] -> (numberType1 = numberType2)
+	| [VectorLiteralType(NumberType(_, numberType1)); NumberType(_, numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(_, numberType1); VectorLiteralType(NumberType(_, numberType2))] -> (numberType1 = numberType2)
 	| _ -> false
 
-(* TODO need to make this work only for rings *)
 let canApplyTimes = function
-	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(extendedGroupType1, numberType1); NumberType(extendedGroupType2, numberType2)] -> 
+		(numberType1 = numberType2) && ((extendedGroupType1 = "ring") || (extendedGroupType1 = "field")) && ((extendedGroupType2 = "ring") || (extendedGroupType2 = "field"))
+ | [VectorLiteralType(NumberType(extendedGroupType1, numberType1)); NumberType(extendedGroupType2, numberType2)] -> 
+		(numberType1 = numberType2) && ((extendedGroupType1 = "ring") || (extendedGroupType1 = "field")) && ((extendedGroupType2 = "ring") || (extendedGroupType2 = "field"))
+	| [NumberType(extendedGroupType1, numberType1); VectorLiteralType(NumberType(extendedGroupType2, numberType2))] -> 
+		(numberType1 = numberType2) && ((extendedGroupType1 = "ring") || (extendedGroupType1 = "field")) && ((extendedGroupType2 = "ring") || (extendedGroupType2 = "field"))
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
 	| _ -> false
 
-(* TODO need to make this work only for fields *)
 let canApplyDivide = function
-	| [NumberType(numberType1); NumberType(numberType2)] -> (numberType1 = numberType2)
+	| [NumberType(extendedGroupType1, numberType1); NumberType(extendedGroupType2, numberType2)] -> 
+		(numberType1 = numberType2) && (extendedGroupType1 = "field") && (extendedGroupType2 = "field")
+  | [VectorLiteralType(NumberType(extendedGroupType1, numberType1)); NumberType(extendedGroupType2, numberType2)] -> 
+				(numberType1 = numberType2) && (extendedGroupType1 = "field") && (extendedGroupType2 = "field")
+	| [NumberType(extendedGroupType1, numberType1); VectorLiteralType(NumberType(extendedGroupType2, numberType2))] -> 
+						(numberType1 = numberType2) && (extendedGroupType1 = "field") && (extendedGroupType2 = "field")
 	| _ -> false
 
 let canApplyMod = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyRaise = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyLessThan = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyLessThanOrEqual = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyGreaterThan = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyGreaterThanOrEqual = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplyEqual = function
-	| [NumberType("Integers"); NumberType("Integers")] -> true
+	| [NumberType(_, "Integers"); NumberType(_, "Integers")] -> true
+	| [VectorLiteralType(NumberType(_, "Integers")); NumberType(_, "Integers")] -> true
+	| [NumberType(_, "Integers"); VectorLiteralType(NumberType(_, "Integers"))] -> true
 	| _ -> false
 
 let canApplySetDifference = function
 	| [SetLiteralType(arg1); SetLiteralType(arg2)] -> arg1=arg2
+	| _ -> false
+
+let canApplyVectorAccess = function
+	| [VectorLiteralType(_); arg2] -> 
+		(canCast arg2 (NumberType("field", "Integers"))) || (canCast arg2 (VectorLiteralType(BooleanType)))	
 	| _ -> false
 
 let canApplyOperator inputTypeList operatorType =
@@ -234,49 +282,110 @@ let canApplyOperator inputTypeList operatorType =
 							| GreaterThan -> canApplyGreaterThan pltInputTypeList
 							| GreaterThanOrEqual -> canApplyGreaterThanOrEqual pltInputTypeList
 							| Equal -> canApplyEqual pltInputTypeList
-							| SetDifference -> canApplySetDifference pltInputTypeList)
+							| SetDifference -> canApplySetDifference pltInputTypeList
+							| VectorAccess -> canApplyVectorAccess pltInputTypeList)
 
-let getOperatorReturnType inputTypes = function
-	| Not -> BooleanType
-	| And -> BooleanType
-	| Or -> BooleanType
-	| Negation -> 
-		(match inputTypes with 
-		 | [inputType] -> inputType
-		 | _ -> raise(PlatoError("Negation must have exactly have one input type")))
-  | Plus -> 
-	  (match inputTypes with 
-		 | [inputType1; inputTyp2] -> inputType1
-		 | _ -> raise(PlatoError("Plus must have exactly have two input types")))
-	| Minus -> 
-	 (match inputTypes with 
-	   | [inputType1; inputTyp2] -> inputType1
-		 | _ -> raise(PlatoError("Minus must have exactly have two input types")))
-	| Times -> 
-	  (match inputTypes with  
-	 	 | [inputType1; inputTyp2] -> inputType1
-		 | _ -> raise(PlatoError("Times must have exactly have two input types")))
-	| Divide -> 
-  	(match inputTypes with 
-		 |[inputType1; inputTyp2] -> inputType1
-		 | _ -> raise(PlatoError("Divide must have exactly have two input types")))
-	| Mod -> 
-    (match inputTypes with 
-		 | [inputType1; inputTyp2] -> inputType1
-		 | _ -> raise(PlatoError("Mod must have exactly have two input types")))
-	| Raise -> 	
-		(match inputTypes with 
-		 | [inputType1; inputTyp2] -> inputType1
-		 | _ -> raise(PlatoError("Raise must have exactly have two input types")))
-	| LessThan -> BooleanType
-	| LessThanOrEqual -> BooleanType
-	| GreaterThan -> BooleanType
-	| GreaterThanOrEqual -> BooleanType
-	| Equal -> BooleanType
-	| SetDifference ->	
-		(match inputTypes with 
-		 | [inputType1; inputType2] -> inputType1
-		 | _ -> raise(PlatoError("Raise must have exactly have two input types")))
+let getOperatorReturnType inputTypes operatorType =
+	let pltInputTypeList = List.map (fun elem -> match elem with
+													OtherType(pltType) -> pltType
+													| _ -> raise(DebugException("If this point was reached, cannot have voidType"))) inputTypes
+	 in ( match operatorType with
+			| Not ->
+			 (match pltInputTypeList with 
+			 | [BooleanType] -> BooleanType
+			 | [VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
+			 | _ -> raise(PlatoError("Not must have exactly have one boolean input type")))
+		| And -> 
+			(match pltInputTypeList with 
+			 | [BooleanType; BooleanType] -> BooleanType
+			 | [VectorLiteralType(BooleanType); BooleanType] -> VectorLiteralType(BooleanType)
+			 | [BooleanType; VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
+			 | _ -> raise(PlatoError("And must have exactly have two boolean input types")))
+		| Or -> 
+			(match pltInputTypeList with 
+			 | [BooleanType; BooleanType] -> BooleanType
+			 | [VectorLiteralType(BooleanType); BooleanType] -> VectorLiteralType(BooleanType)
+			 | [BooleanType; VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
+			 | [VectorLiteralType(BooleanType); VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
+			 | _ -> raise(PlatoError("Or must have exactly have two boolean input types")))
+		| Negation -> 
+			(match pltInputTypeList with 
+			 | [inputType] -> inputType
+			 | _ -> raise(PlatoError("Negation must have exactly have one input type")))
+		| Plus -> 
+		  (match pltInputTypeList with 
+			 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+			 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+			 | [inputType1; inputTyp2] -> inputType1
+			 | _ -> raise(PlatoError("Plus must have exactly have two input types")))
+		| Minus -> 
+		 (match pltInputTypeList with 
+			 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+			 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+			 | [inputType1; inputTyp2] -> inputType1
+			 | _ -> raise(PlatoError("Minus must have exactly have two input types")))
+		| Times -> 
+		  (match pltInputTypeList with  
+			 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+			 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+			 | [inputType1; inputTyp2] -> inputType1
+			 | _ -> raise(PlatoError("Times must have exactly have two input types")))
+		| Divide -> 
+	  	(match pltInputTypeList with 
+			 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+			 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+			 | [inputType1; inputTyp2] -> inputType1
+			 | _ -> raise(PlatoError("Divide must have exactly have two input types")))
+		| Mod -> 
+	    (match pltInputTypeList with 
+			 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+			 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+			 | [inputType1; inputTyp2] -> inputType1
+			 | _ -> raise(PlatoError("Mod must have exactly have two input types")))
+		| Raise -> 	
+			(match pltInputTypeList with 
+			 | [VectorLiteralType(inputType1); inputType2] -> VectorLiteralType(inputType1)
+			 | [inputType1; VectorLiteralType(inputType2)] -> VectorLiteralType(inputType2)
+			 | [inputType1; inputTyp2] -> inputType1
+			 | _ -> raise(PlatoError("Raise must have exactly have two input types")))
+		| LessThan -> 
+			(match pltInputTypeList with 
+			 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+			 | [NumberType("field", "Integers"); NumberType("field", "Integers")] -> BooleanType
+			 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+		| LessThanOrEqual -> 
+		  (match pltInputTypeList with 
+			 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+			 | [NumberType("field", "Integers"); NumberType("field", "Integers")] -> BooleanType
+			 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+		| GreaterThan -> 
+			(match pltInputTypeList with 
+			 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+			 | [NumberType("field", "Integers"); NumberType("field", "Integers")] -> BooleanType
+			 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+		| GreaterThanOrEqual -> 
+			(match pltInputTypeList with 
+			 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+			 | [NumberType("field", "Integers"); NumberType("field", "Integers")] -> BooleanType
+			 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+		| Equal -> 
+			(match pltInputTypeList with 
+			 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(BooleanType)
+			 | [NumberType("field", "Integers"); NumberType("field", "Integers")] -> BooleanType
+			 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+		| SetDifference ->	
+			(match pltInputTypeList with 
+			 | [inputType1; inputType2] -> inputType1
+			 | _ -> raise(PlatoError("Set difference must have exactly have two input types")))
+		| VectorAccess ->
+			(match pltInputTypeList with 
+			 | [VectorLiteralType(arg1); arg2] -> 
+				(if (canCast arg2 (NumberType("field", "Integers")))
+				 then arg1
+				 else VectorLiteralType(arg1))
+			 | _ -> raise(PlatoError("VectorAccess must have exactly have two input types, and the first type must be a VectorLiteral"))) 
+
+		)
 
 let getOperatorCallClass inputTypeList = function
 	| Not -> "Booleans"
@@ -284,94 +393,155 @@ let getOperatorCallClass inputTypeList = function
 	| Or -> "Booleans"
 	| Negation -> 
 		(match inputTypeList with
-		 | [NumberType(groupName)] -> groupName
+		 | [NumberType(_, groupName)] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName))] -> groupName
 		 | _ -> raise(operatorException Negation inputTypeList)) 
   | Plus -> 
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Plus inputTypeList)) 
 	| Minus -> 
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Minus inputTypeList)) 
 	| Times -> 
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Times inputTypeList)) 
 	| Divide ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Divide inputTypeList)) 
 	| Mod ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Mod inputTypeList)) 
 	| Raise ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | [SetLiteralType(_); _] -> "SetLiterals"
 		 | _ -> raise(operatorException Raise inputTypeList)) 
 	| LessThan -> 
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException LessThan inputTypeList)) 
 	| LessThanOrEqual ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException LessThanOrEqual inputTypeList)) 
 	| GreaterThan ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException GreaterThan inputTypeList)) 
 	| GreaterThanOrEqual ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException GreaterThanOrEqual inputTypeList)) 
 	| Equal ->
 		(match inputTypeList with
-		 | [NumberType(groupName); _] -> groupName
+		 | [VectorLiteralType(NumberType(_, groupName)); NumberType(_, _)] -> groupName
+		 | [NumberType(_, _); VectorLiteralType(NumberType(_, groupName))] -> groupName
+		 | [NumberType(_, groupName); _] -> groupName
 		 | _ -> raise(operatorException Equal inputTypeList)) 
 	| SetDifference ->
 		(match inputTypeList with
 		 | [SetLiteralType(_); _] -> "SetLiterals"
-		 | _ -> raise(operatorException Equal inputTypeList)) 
+		 | _ -> raise(operatorException SetDifference inputTypeList))
+	| VectorAccess ->
+		(match inputTypeList with
+		 | [VectorLiteralType(_); _] -> ("VectorLiterals")
+		 | _ -> raise(operatorException VectorAccess inputTypeList)) 
+
+let extractPltTypeFromFuncType = function
+	OtherType(pltType) -> pltType
+	| _ -> raise(DebugException("If this point was reached, cannot have voidType"))
 
 let rec checkExpression globalEnv environment = function
-	| Boolean(booleanValue) -> TypedBoolean(booleanValue, OtherType(BooleanType))
-	| Number(numberValue) -> TypedNumber(numberValue, OtherType(NumberType("Integers")))
-  | Identifier(variableName) -> 
+	| Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
+	| Number(numberValue) -> TypedNumber(numberValue, NumberType("field", "Integers"))
+	| Identifier(variableName) -> 
 		  let variableDeclaration = 
 				try findVariable environment.scope variableName 
-			  with Not_found -> raise (undefinedVariableException variableName)
+			  with Not_found -> raise (undeclaredVariableException variableName)
 		  in  let (_, variableType) = variableDeclaration
-			    in TypedIdentifier(variableName, OtherType(variableType))
+			    in TypedIdentifier(variableName, variableType)
 	| Unop(unaryOperator, unopExpression) ->
 		(let unaryExpression =  checkExpression globalEnv environment unopExpression
 		 in let expressionTypeList = [getExpressionType unaryExpression]
 		    in if canApplyOperator expressionTypeList unaryOperator
-			     then TypedUnop(unaryOperator, OtherType(getOperatorReturnType expressionTypeList unaryOperator), unaryExpression)
-			     else raise(operatorException unaryOperator expressionTypeList))
+			     then TypedUnop(unaryOperator, getOperatorReturnType expressionTypeList unaryOperator, unaryExpression)
+			     else 
+			     	let pltExpressionTypeList = List.map (fun elem -> match elem with
+													OtherType(pltType) -> pltType
+													| _ -> raise(DebugException("If this point was reached, cannot have voidType"))) expressionTypeList
+			     	in raise(operatorException unaryOperator pltExpressionTypeList))
 	| Binop(binaryOperator, binaryExpression1, binaryExpression2) ->
 		(let binaryExpression1 = checkExpression globalEnv environment binaryExpression1
 		 and binaryExpression2 = checkExpression globalEnv environment binaryExpression2
-     in let expressionTypeList = [getExpressionType binaryExpression2; getExpressionType binaryExpression2]
+     	in let expressionTypeList = [getExpressionType binaryExpression1; getExpressionType binaryExpression2]
 		    in if canApplyOperator expressionTypeList binaryOperator
-			     then TypedBinop(binaryOperator, OtherType(getOperatorReturnType expressionTypeList binaryOperator), binaryExpression1, binaryExpression2)
-			     else raise(operatorException binaryOperator expressionTypeList))
+			     then TypedBinop(binaryOperator, getOperatorReturnType expressionTypeList binaryOperator, binaryExpression1, binaryExpression2)
+			     else
+			     	let pltExpressionTypeList = List.map (fun elem -> match elem with
+													OtherType(pltType) -> pltType
+													| _ -> raise(DebugException("If this point was reached, cannot have voidType"))) expressionTypeList 
+			     	   in raise(operatorException binaryOperator pltExpressionTypeList))
 	| SetLiteral(setopExpressionList) ->
 		(match setopExpressionList with
 			[] -> TypedSet(SetLiteralType(NeutralType), [])
 			| _ -> (let setExpressionList =  List.map (checkExpression globalEnv environment) setopExpressionList
 				 in let expressionTypeList = List.map getExpressionType setExpressionList
-				 	in TypedSet(OtherType(SetLiteralType(List.hd expressionTypeList)), setExpressionList)))
-	| FunctionCall(functionName, expressionlist) -> 
-		if isFunctionInEnv globalEnv functionName
+				 	in let headExpressionType = List.hd expressionTypeList
+				 		in if allTrue (List.map (fun arg1 -> (headExpressionType=arg1)) expressionTypeList)
+				 			then TypedSet(SetLiteralType(extractPltTypeFromFuncType (List.hd expressionTypeList)), setExpressionList)
+				 			else raise(heterogeneousSetLiteralException (List.map extractPltTypeFromFuncType expressionTypeList) )))
+	| VectorLiteral(vectoropExpressionList) ->
+		(match vectoropExpressionList with
+			[] -> TypedVector(VectorLiteralType(NeutralType), [])
+			| _ -> (let vectorExpressionList =  List.map (checkExpression globalEnv environment) vectoropExpressionList
+				 in let expressionTypeList = List.map getExpressionType vectorExpressionList
+				 	in let headExpressionType = List.hd expressionTypeList
+				 		in if allTrue (List.map (fun arg1 -> (headExpressionType=arg1)) expressionTypeList)
+				 			 then TypedVector(VectorLiteralType(extractPltTypeFromFuncType (List.hd expressionTypeList)), vectorExpressionList)
+				 			 else raise(heterogeneousVectorLiteralException (List.map extractPltTypeFromFuncType expressionTypeList))))
+	| VectorRange(fromExpression, toExpression, byExpression) ->
+		let fromExpression, toExpression, byExpression = (checkExpression globalEnv environment fromExpression), (checkExpression globalEnv environment toExpression), (checkExpression globalEnv environment byExpression)
+	  in let fromExpressionType, toExpressionType, byExpressionType = (getExpressionType fromExpression), (getExpressionType toExpression), (getExpressionType byExpression)
+        in if canCast (extractPltTypeFromFuncType fromExpressionType) (NumberType("field", "Integers"))
+				   then if canCast (extractPltTypeFromFuncType toExpressionType) (NumberType("field", "Integers"))
+						     then if canCast (extractPltTypeFromFuncType byExpressionType) (NumberType("field", "Integers"))
+									     then TypedVectorRange(VectorLiteralType(NumberType("field", "Integers")), fromExpression, toExpression, byExpression)
+											else raise(castException (extractPltTypeFromFuncType byExpressionType) (NumberType("field", "Integers")))
+						     else raise(castException (extractPltTypeFromFuncType byExpressionType) (NumberType("field", "Integers")))
+					else raise(castException (extractPltTypeFromFuncType byExpressionType) (NumberType("field", "Integers")))
+	| FunctionCall(functionName, expressionList) -> 
+		if isFunctionInEnv globalEnv.globalScope functionName
 		then
-			let (_, functionType, parameterList) = getFunctionDeclaration globalEnv functionName
+			let (_, functionType, parameterList) = getFunctionDeclaration globalEnv.globalScope functionName
 			in let listOfCheckedExpressions = List.map (checkExpression globalEnv environment) expressionList
-				in let listOfExpressionTypes = List.map getExpressionType listOfCheckedExpressions
+				in let listOfExpressionTypes = List.map extractPltTypeFromFuncType (List.map getExpressionType listOfCheckedExpressions)
 					in let listOfTypesOfParams = List.map (fun elem -> match elem with 
 																		Parameter(platoType, _) -> platoType) parameterList
 						(* TODO do pairwise matching based on canCast *)
@@ -395,11 +565,11 @@ let rec checkStatement globalEnv environment = function
 	| Print(expression) -> TypedPrint(checkExpression globalEnv environment expression)
 	| Return(expression) -> 
 		let checkedExpression = checkExpression globalEnv environment expression
-		in TypedReturn(OtherType(getExpressionType checkedExpression), checkedExpression)
+		in TypedReturn(getExpressionType checkedExpression, checkedExpression)
 	| If (expression, statementBlock, elseIfBlockList, elseBlock) ->
 		let typedExpression = checkExpression globalEnv environment expression
 		in let expressionType = getExpressionType typedExpression
-			in if canCast expressionType BooleanType
+			in if canCast (extractPltTypeFromFuncType expressionType) BooleanType
 				then 
 					let checkedStatementBlock = checkStatementBlock globalEnv environment statementBlock
 					in let typeOfLastStmtInBlock = getTypedStmtBlockReturnType checkedStatementBlock 
@@ -417,37 +587,47 @@ let rec checkStatement globalEnv environment = function
 											in if List.fold_left (fun booleanValue expressionType -> booleanValue && (expressionType = typeOfLastStmtInBlock)) true typesOfLastStmtsInElseIfAndElseBlocks
 												then TypedIf(typeOfLastStmtInBlock, typedExpression, checkedStatementBlock, checkedElseIfs, checkedElse)
 												else TypedIf(VoidType, typedExpression, checkedStatementBlock, checkedElseIfs, checkedElse)
-				else raise(noneBooleanExpressionInIf expressionType)
+				else raise(noneBooleanExpressionInIf (extractPltTypeFromFuncType expressionType))
 	| IfNoElse (expression, statementBlock, elseIfBlockList) -> 
 		let typedExpression = checkExpression globalEnv environment expression
 		in let expressionType = getExpressionType typedExpression
-			in if canCast expressionType BooleanType
+			in if canCast (extractPltTypeFromFuncType expressionType) BooleanType
 				then TypedIfNoElse(typedExpression, checkStatementBlock globalEnv environment statementBlock, List.map (checkElseIfBlock globalEnv environment) elseIfBlockList)
-				else raise(noneBooleanExpressionInIf expressionType)
+				else raise(noneBooleanExpressionInIf (extractPltTypeFromFuncType expressionType))
   | Assignment(variableName, newValue) -> 
 		let variableIdentifier = Identifier(variableName) 
 		in let variableDetails = checkExpression globalEnv environment variableIdentifier
 			 in let expressionDetails = checkExpression globalEnv environment newValue
 			     in let expressionType, variableType = (getExpressionType expressionDetails), (getExpressionType variableDetails)
-						  in if canCast (getExpressionType expressionDetails) (getExpressionType variableDetails)
-				         then TypedAssignment((variableName, variableType), expressionDetails) 
-						     else raise(castException expressionType variableType)
+						  in if canCast (extractPltTypeFromFuncType expressionType) (extractPltTypeFromFuncType variableType)
+				             then TypedAssignment((variableName, (extractPltTypeFromFuncType variableType)), expressionDetails) 
+						     else raise(castException (extractPltTypeFromFuncType expressionType) (extractPltTypeFromFuncType variableType))
+	| VectorAssignment(variableName, variableIndex, newValue) -> 
+		let variableIdentifier = Identifier(variableName)
+		 in let variableDetails, variableIndexDetails, expressionDetails = (checkExpression globalEnv environment variableIdentifier), (checkExpression globalEnv environment variableIndex), (checkExpression globalEnv environment newValue)
+		     in let variableIndexType, expressionType, variableType = (getExpressionType variableIndexDetails), (getExpressionType expressionDetails), (getExpressionType variableDetails)
+		 		  in (match (extractPltTypeFromFuncType variableType) with
+		 				| VectorLiteralType(variableSubType) -> if ((canCast (extractPltTypeFromFuncType expressionType) variableSubType) 
+				 		  	  && (canCast (extractPltTypeFromFuncType variableIndexType) (NumberType("field", "Integers"))))
+				             then TypedVectorAssignment((variableName, (extractPltTypeFromFuncType variableType)), variableIndexDetails, expressionDetails) 
+				 		     else raise(castException (extractPltTypeFromFuncType expressionType) (extractPltTypeFromFuncType variableType))
+				 				| _ -> raise(PlatoError("Cannot use vector assignment for non-vector.")))
 	| Declaration(variableType, variableName, newValue) ->
 		let expressionDetails = checkExpression globalEnv environment newValue
 		   in let expressionType = (getExpressionType expressionDetails)  
-			    in if canCast expressionType variableType
+			    in if canCast (extractPltTypeFromFuncType expressionType) variableType
 			       then (updateScope environment.scope (variableName, variableType);
 						       TypedDeclaration((variableName, variableType), expressionDetails))
-					   else raise(castException expressionType variableType)
+					   else raise(castException (extractPltTypeFromFuncType expressionType) variableType)
 and checkStatementBlock globalEnv environment = function
 	  StatementBlock(statementList) -> TypedStatementBlock(List.map (checkStatement globalEnv environment) statementList)
 and checkElseIfBlock globalEnv environment = function 
 	ElseIfBlock(expression, statementBlock) -> 
 		let typedExpression = checkExpression globalEnv environment expression
 		in let expressionType = getExpressionType typedExpression
-			in if canCast expressionType BooleanType
+			in if canCast (extractPltTypeFromFuncType expressionType) BooleanType
 				then TypedElseIfBlock(typedExpression, checkStatementBlock globalEnv environment statementBlock)
-				else raise(noneBooleanExpressionInElseIf expressionType)
+				else raise(noneBooleanExpressionInElseIf (extractPltTypeFromFuncType expressionType))
 and checkElseBlock globalEnv environment = function 
 	ElseBlock(statementBlock) -> 
 		TypedElseBlock(checkStatementBlock globalEnv environment statementBlock)
@@ -477,7 +657,6 @@ let checkFunctionBlock globalEnv = function
 	  		in let functionEnvironment = emptyEnviroment
 	  		   in (ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters)));
 	  		   		(ignore (updateGlobalScopeWithFunction globalEnv.globalScope functionHeader.functionName functionHeader.returnType functionHeader.parameters));
-	  		   		(*(ignore updateGlobalScope);*)
 	  			   let checkedStatementBlock = checkStatementBlock globalEnv functionEnvironment statementBlock
 	  			 	in let stmtBlockReturnType = getTypedStmtBlockReturnType checkedStatementBlock
 	  					in if(functionReturnType=stmtBlockReturnType)
@@ -552,39 +731,8 @@ let rec isElement list element =
 	                then true
 									else isElement tail element
 
-let isClosed groupElements groupTable = 
-	let allTrue list = List.fold_left (&&) true list
-  in allTrue (List.map (fun intList -> allTrue (List.map (isElement groupElements) intList)) groupTable)	
-																																																																																														
-let checkAssociative a b c groupTable = 
-	let groupTimes = fun a b -> List.nth (List.nth groupTable a) b
-	in let starResult = groupTimes (groupTimes a b) c
-	   in let circleResult = groupTimes a (groupTimes b c)
-		    in starResult = circleResult
-						
-let rec checkAssociativeList aList b c groupTable	=
-	match aList with
-	| [] -> true
-	| head::tail -> if checkAssociative head b c groupTable 
-	                then checkAssociativeList tail b c groupTable	
-		              else false
-								
-let rec checkAssociativeListPair aList bList c groupTable =	
-	match bList with
-	| [] -> true
-	| head::tail -> if checkAssociativeList aList head c groupTable 
-	                then checkAssociativeListPair aList tail c groupTable	
-		              else false		
-		
-let rec checkAssociativeListTriple aList bList cList groupTable =	
-	match cList with
-	| [] -> true
-	| head::tail -> if checkAssociativeListPair aList bList head groupTable 
-	                then checkAssociativeListTriple aList bList tail groupTable	
-		              else false				
-					
-let isAssociative groupElements groupTable = checkAssociativeListTriple groupElements groupElements groupElements groupTable 				
-
+let isClosed groupElements groupTable = allTrue (List.map (fun intList -> allTrue (List.map (isElement groupElements) intList)) groupTable)	
+	
 let rec getIndexHelper element list startIndex =
 	match list with 
 	| [] -> raise Not_found
@@ -593,7 +741,36 @@ let rec getIndexHelper element list startIndex =
 	  then startIndex
 	  else getIndexHelper element tail (startIndex + 1)
 
-let getIndex element list = getIndexHelper element list 0												
+let getIndex element list = getIndexHelper element list 0		
+
+let checkAssociative a b c groupElements groupTable = 
+	let groupTimes = fun a b -> List.nth (List.nth groupTable (getIndex a groupElements)) (getIndex b groupElements)
+	in let starResult = groupTimes (groupTimes a b) c
+	   in let circleResult = groupTimes a (groupTimes b c)
+		    in starResult = circleResult
+						
+let rec checkAssociativeList aList b c groupElements groupTable	=
+	match aList with
+	| [] -> true
+	| head::tail -> if checkAssociative head b c groupElements groupTable 
+	                then checkAssociativeList tail b c groupElements groupTable	
+		              else false
+								
+let rec checkAssociativeListPair aList bList c groupElements groupTable =	
+	match bList with
+	| [] -> true
+	| head::tail -> if checkAssociativeList aList head c groupElements groupTable 
+	                then checkAssociativeListPair aList tail c groupElements groupTable	
+		              else false		
+		
+let rec checkAssociativeListTriple aList bList cList groupElements groupTable =	
+	match cList with
+	| [] -> true
+	| head::tail -> if checkAssociativeListPair aList bList head groupElements groupTable 
+	                then checkAssociativeListTriple aList bList tail groupElements groupTable	
+		              else false				
+					
+let isAssociative groupElements groupTable = checkAssociativeListTriple groupElements groupElements groupElements groupElements groupTable 														
 						
 let rec removeNthHelper n list acc = 
 	if n = 0 
@@ -609,35 +786,35 @@ let rec isCommutative table =
 	       then isCommutative (List.tl (List.map List.tl table))
 				 else false						
 
-let checkDistributive a b c additionTable multiplicationTable = 
-  let groupPlus = fun a b -> List.nth (List.nth additionTable a) b
-	in let groupTimes = fun a b -> List.nth (List.nth multiplicationTable a) b
+let checkDistributive a b c groupElements additionTable multiplicationTable = 
+  let groupPlus = fun a b -> List.nth (List.nth additionTable (getIndex a groupElements)) (getIndex b groupElements)
+	in let groupTimes = fun a b -> List.nth (List.nth multiplicationTable (getIndex a groupElements)) (getIndex b groupElements)
 	   in let starResult = groupTimes a (groupPlus b c)
 	      in let circleResult = groupPlus (groupTimes a b) (groupTimes a c)
 		       in starResult = circleResult
 						
-let rec checkDistributiveList aList b c additionTable multiplicationTable	=
+let rec checkDistributiveList aList b c groupElements additionTable multiplicationTable	=
 	match aList with
 	| [] -> true
-	| head::tail -> if checkDistributive head b c additionTable multiplicationTable 
-	                then checkDistributiveList tail b c additionTable multiplicationTable	
+	| head::tail -> if checkDistributive head b c groupElements additionTable multiplicationTable 
+	                then checkDistributiveList tail b c groupElements additionTable multiplicationTable	
 		              else false
 								
-let rec checkDistributiveListPair aList bList c additionTable multiplicationTable =	
+let rec checkDistributiveListPair aList bList c groupElements additionTable multiplicationTable =	
 	match bList with
 	| [] -> true
-	| head::tail -> if checkDistributiveList aList head c additionTable multiplicationTable 
-	                then checkDistributiveListPair aList tail c additionTable multiplicationTable	
+	| head::tail -> if checkDistributiveList aList head c groupElements additionTable multiplicationTable 
+	                then checkDistributiveListPair aList tail c groupElements additionTable multiplicationTable	
 		              else false		
 		
-let rec checkDistributiveListTriple aList bList cList additionTable multiplicationTable =	
+let rec checkDistributiveListTriple aList bList cList groupElements additionTable multiplicationTable =	
 	match cList with
 	| [] -> true
-	| head::tail -> if checkDistributiveListPair aList bList head additionTable multiplicationTable 
-	                then checkDistributiveListTriple aList bList tail additionTable multiplicationTable	
+	| head::tail -> if checkDistributiveListPair aList bList head groupElements additionTable multiplicationTable 
+	                then checkDistributiveListTriple aList bList tail groupElements additionTable multiplicationTable	
 		              else false				
 					
-let distributes groupElements additionTable multiplicationTable = checkDistributiveListTriple groupElements groupElements groupElements additionTable multiplicationTable
+let distributes groupElements additionTable multiplicationTable = checkDistributiveListTriple groupElements groupElements groupElements groupElements additionTable multiplicationTable
 						
 let checkExtendedGroupBlock = function
 	 | GroupDeclaration(GroupHeader(groupName), GroupBody(groupElements, groupAdditionFunction)) -> 
@@ -673,27 +850,33 @@ let checkExtendedGroupBlock = function
 			   
 let checkProgram globalEnv = function
 	  Program(mainBlock, functionBlockList, extendedGroupBlockList) -> 
-	  let checkedFunctionBlockList = List.map checkFunctionBlock globalEnv functionBlockList
-	  in TypedProgram(checkMainBlock globalEnv mainBlock, checkedFunctionBlockList, List.map checkExtendedGroupBlock extendedGroupBlockList)	 
+	  	let checkedFunctionBlockList = List.map (checkFunctionBlock globalEnv) functionBlockList
+	  		in TypedProgram(checkMainBlock globalEnv mainBlock, checkedFunctionBlockList, List.map checkExtendedGroupBlock extendedGroupBlockList)	 
 
 (* Convert Sast to Java Ast *)
 let createJavaType = function
 	| BooleanType -> JavaBooleanType
-	| NumberType(_) -> JavaIntType
+	| NumberType(_, _) -> JavaIntType
 	| SetLiteralType(_) -> JavaSetLiteralType
+	| VectorLiteralType(_) -> JavaVectorLiteralType
+	| NeutralType -> JavaNeutralType
 
 let rec createJavaExpression = function
 	| TypedBoolean(booleanValue, _) -> JavaConstant(JavaValue(JavaBoolean(booleanValue)))
 	| TypedNumber(numberValue, _)-> JavaConstant(JavaValue(JavaInt(numberValue)))
-  | TypedIdentifier(variableName, _) -> JavaVariable(variableName)
+	| TypedIdentifier(variableName, _) -> JavaVariable(variableName)
 	| TypedUnop(unaryOperator, operatorType, unopExpression) ->
-		JavaCall(getOperatorCallClass [getExpressionType unopExpression] unaryOperator, operatorToString unaryOperator, [createJavaExpression unopExpression])
+		JavaCall(getOperatorCallClass [extractPltTypeFromFuncType (getExpressionType unopExpression)] unaryOperator, operatorToString unaryOperator, [createJavaExpression unopExpression])
 	| TypedBinop(binaryOperator, operatorType, binaryExpression1, binaryExpression2) ->
-		JavaCall(getOperatorCallClass [getExpressionType binaryExpression1; getExpressionType binaryExpression2] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
+		JavaCall(getOperatorCallClass [extractPltTypeFromFuncType (getExpressionType binaryExpression1); extractPltTypeFromFuncType (getExpressionType binaryExpression2)] binaryOperator, operatorToString binaryOperator, [createJavaExpression binaryExpression1; createJavaExpression binaryExpression2])
 	| TypedSet(setType, setExpressionList) ->
 		JavaCall("SetLiterals", "newPlatoSet", List.map createJavaExpression setExpressionList)
 	| TypedFunctionCall(platoFunctionType, functionName, expressionList) -> 
-		JavaCall()
+		JavaCall("", functionName, List.map createJavaExpression expressionList)
+	| TypedVector(vectorType, vectorExpressionList) ->
+		JavaCall("VectorLiterals", "newPlatoVector", List.map createJavaExpression vectorExpressionList)
+	| TypedVectorRange(vectorType, fromExpression, toExpression, byExpression) ->
+		JavaCall("VectorLiterals", "newPlatoVectorRange", [createJavaExpression fromExpression; createJavaExpression toExpression; createJavaExpression byExpression])
 
 let rec createJavaStatement = function
 	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
@@ -712,6 +895,7 @@ let rec createJavaStatement = function
 							)
 					)
 	| TypedAssignment((variableName, variableType), newValue) -> JavaStatement(JavaAssignment(variableName, createJavaExpression newValue))
+	| TypedVectorAssignment((variableName, variableType), indexValue, newValue) -> JavaStatement(JavaVectorAssignment(variableName, createJavaExpression indexValue, createJavaExpression newValue))
 	| TypedDeclaration((variableName, variableType), newValue) -> JavaStatement(JavaDeclaration(createJavaType variableType, variableName, Some(createJavaExpression newValue)))
 
 and createJavaElseIf = function 
@@ -784,6 +968,8 @@ let generateJavaType logToJavaFile = function
 	| JavaBooleanType -> logToJavaFile "boolean "
 	| JavaIntType -> logToJavaFile "int "
 	| JavaSetLiteralType -> logToJavaFile "PlatoSet<Object> "
+	| JavaVectorLiteralType -> logToJavaFile "PlatoVector<Object> "
+	| JavaNeutralType -> logToJavaFile "Object "
 
 let generateJavaPrimitive logToJavaFile = function
 	| JavaBoolean(booleanValue) -> logToJavaFile (string_of_bool booleanValue)
@@ -824,6 +1010,12 @@ let rec generateJavaExpression logToJavaFile = function
 	| JavaAssignment(variableName, variableValue) -> 
 		logToJavaFile (variableName ^ "=");
 		generateJavaExpression logToJavaFile variableValue
+	| JavaVectorAssignment(variableName, indexValue, variableValue) -> 
+		logToJavaFile (variableName ^ ".set((");
+		generateJavaExpression logToJavaFile indexValue;
+		logToJavaFile (")-1, ");
+		generateJavaExpression logToJavaFile variableValue;
+		logToJavaFile (")");
 	| JavaDeclaration(variableType, variableName, variableValue) ->
 	  (generateJavaType logToJavaFile variableType;
 		logToJavaFile (variableName ^ "=");
@@ -907,10 +1099,10 @@ let generateJavaClass fileName = function
 						     logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
 				         ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
 			           logToJavaFile "}\n"
-			
+
 let generatePlatoCommonClass = 
 	let logToCommonClassFile = logToFileOverwrite false "PlatoCommon.java"
-	in logToCommonClassFile commonClassString 			
+	in logToCommonClassFile commonClassString
 			
 let generatePlatoBooleanClass = 
 	let logToBooleanClassFile = logToFileOverwrite false "Booleans.java"
@@ -927,6 +1119,14 @@ let generatePlatoSetLiteralsClass =
 let generatePlatoSetClass = 
 	let logToIntegerClassFile = logToFileOverwrite false "PlatoSet.java"
 	in logToIntegerClassFile platoSetClassString
+
+let generatePlatoVectorLiteralsClass = 
+	let logToIntegerClassFile = logToFileOverwrite false "VectorLiterals.java"
+	in logToIntegerClassFile vectorLiteralsClassString
+
+let generatePlatoVectorClass = 
+	let logToIntegerClassFile = logToFileOverwrite false "PlatoVector.java"
+	in logToIntegerClassFile platoVectorClassString
 
 let generatePlatoGroupClass = 
 	let logToGroupClassFile = logToFileOverwrite false "Groups.java"
@@ -946,6 +1146,8 @@ let generatePlatoClasses =
 	generatePlatoIntegerClass;
 	generatePlatoSetLiteralsClass;
 	generatePlatoSetClass;
+	generatePlatoVectorLiteralsClass;
+	generatePlatoVectorClass;
 	generatePlatoGroupClass;	
 	generatePlatoRingClass;
 	generatePlatoFieldClass	
@@ -955,7 +1157,6 @@ let generateJavaCode fileName = function
 			generatePlatoClasses;
 			ignore (List.map (generateJavaClass fileName) javaClassList)
 
-(* TODO: Need to check for correct file extension and existance and permissions for file *)
 let compile fileName =
   let lexbuf = Lexing.from_channel (open_in fileName) 
 	in let programAst = Parser.program Scanner.token lexbuf
@@ -963,8 +1164,10 @@ let compile fileName =
 		    let programSast = checkProgram emptyGlobalEnvironment programAst
 		    in logProgramSast programSast; 
 				   let javaClassListAst = createJavaAst programSast
-		       in logJavaClassListAst javaClassListAst; 
-					    generateJavaCode (Filename.chop_extension (Filename.basename fileName)) javaClassListAst
-
+		       in logJavaClassListAst javaClassListAst;
+					    let basename =  Filename.basename fileName
+					    in if (String.sub basename ((String.length basename) - 4) 4) = ".plt"
+							   then generateJavaCode (Filename.chop_extension basename) javaClassListAst
+                 else raise(PlatoError("Invalid file extension"))
 let _ = compile Sys.argv.(1)
 	 

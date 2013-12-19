@@ -3,15 +3,17 @@ open Ast;;
 type  variableDeclaration = 
 	  string * Ast.platoType
 type functionDeclaration = 
-		string * Ast.platoType * Ast.parameter list
+		string * Ast.platoFunctionType * Ast.parameter list
 
 type typedExpression = 
-	| TypedBoolean of bool * Ast.platoFunctionType
-	| TypedNumber of int * Ast.platoFunctionType
-  | TypedIdentifier of string  * Ast.platoFunctionType
-	| TypedUnop of operator * Ast.platoFunctionType * typedExpression
-	| TypedBinop of operator * Ast.platoFunctionType * typedExpression * typedExpression
-	| TypedSet of Ast.platoFunctionType * typedExpression list
+	| TypedBoolean of bool * Ast.platoType
+	| TypedNumber of int * Ast.platoType
+  | TypedIdentifier of string  * Ast.platoType
+	| TypedUnop of operator * Ast.platoType * typedExpression
+	| TypedBinop of operator * Ast.platoType * typedExpression * typedExpression
+	| TypedSet of Ast.platoType * typedExpression list
+	| TypedVector of Ast.platoType * typedExpression list
+	| TypedVectorRange of Ast.platoType * typedExpression * typedExpression * typedExpression
 	| TypedFunctionCall of Ast.platoFunctionType * string * typedExpression list
 
 type typedStatement = 
@@ -19,12 +21,13 @@ type typedStatement =
 	| TypedReturn of Ast.platoFunctionType * typedExpression
 	| TypedIf of Ast.platoFunctionType * typedExpression * typedStatementBlock * typedElseIfBlock list * typedElseBlock
 	| TypedIfNoElse of typedExpression * typedStatementBlock * typedElseIfBlock list
-	| TypedAssignment of variableDeclaration * typedExpression      
+	| TypedAssignment of variableDeclaration * typedExpression
+	| TypedVectorAssignment of variableDeclaration * typedExpression * typedExpression
 	| TypedDeclaration of variableDeclaration * typedExpression
 and typedElseIfBlock = 
-	TypedElseIfBlock of typedExpression * typedStatementBlock
+	  TypedElseIfBlock of typedExpression * typedStatementBlock
 and typedElseBlock = 
-	TypedElseBlock of typedStatementBlock
+	  TypedElseBlock of typedStatementBlock
 and typedStatementBlock = 
 	  TypedStatementBlock of typedStatement list
 

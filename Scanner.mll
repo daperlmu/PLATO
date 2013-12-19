@@ -8,7 +8,10 @@ rule token = parse
 	| "NUMBER" { NUMBER_TYPE }
 	| "SET"   { SET_TYPE }
 	| "VOID" { VOID_TYPE }
-  | "WHICH" { WHICH_QUANTIFIER }
+	| "VECTOR"   { VECTOR_TYPE }
+	| "TO"   { VECTOR_TO }
+	| "BY"   { VECTOR_BY }
+	| "WHICH" { WHICH_QUANTIFIER }
 	| "SOME" { SOME_QUANTIFIER }
 	| "ALL" { ALL_QUANTIFIER }
   | "TRUE" { BOOLEAN(true) }
@@ -22,6 +25,7 @@ rule token = parse
 	| "GROUP" { GROUP }
 	| "RING" { RING }
 	| "FIELD" { FIELD }
+	| "elements" { ELEMENTS }
 	| "add" { ADD }
 	| "multiply" { MULTIPLY }
 	| "if" { IF }

@@ -3,7 +3,7 @@ type operator =
 	| And
 	| Or
 	| Negation
-  | Plus 
+	| Plus 
 	| Minus
 	| Times
 	| Divide
@@ -15,11 +15,13 @@ type operator =
 	| GreaterThanOrEqual
 	| Equal
 	| SetDifference
+	| VectorAccess
 
 type platoType =
 	| BooleanType
-	| NumberType of string
+	| NumberType of string * string
 	| SetLiteralType of platoType
+	| VectorLiteralType of platoType
 	| NeutralType
 
 type platoQuantifier =
@@ -39,6 +41,8 @@ type expression =
 	| Binop of operator * expression * expression
 	| SetLiteral of expression list
 	| FunctionCall of string * expression list
+	| VectorLiteral of expression list
+	| VectorRange of expression * expression * expression
 
 type statement =
 	| Print of expression
@@ -46,6 +50,7 @@ type statement =
 	| If of expression * statementBlock * elseIfBlock list * elseBlock
 	| IfNoElse of expression * statementBlock * elseIfBlock list
   | Assignment of string * expression
+  | VectorAssignment of string * expression * expression
 	| Declaration of platoType * string * expression	
 and statementBlock = 
 	  StatementBlock of statement list
@@ -77,8 +82,7 @@ type groupBody =
 type extendedGroupHeader = 
 	| RingHeader of string
 	| FieldHeader of string			
-		
-(* TODO should be int set not int list *)	
+
 type extendedGroupBody =
 	  ExtendedGroupBody of groupBody * functionBlock			
 																		

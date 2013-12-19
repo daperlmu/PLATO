@@ -20,11 +20,13 @@ let operatorToString = function
 	| GreaterThanOrEqual -> "greaterThanOrEqual"
 	| Equal ->  "equal"
 	| SetDifference ->  "setDifference"
+	| VectorAccess -> "vectorAccess"
 
 let rec typeToString = function
 	| BooleanType -> "Booleans"
-	| NumberType(groupName) -> "Number over " ^ groupName
+	| NumberType(extendeGroupType, groupName) -> "Number over " ^ extendeGroupType ^ groupName
 	| SetLiteralType(subtype) -> "Set of " ^ (typeToString subtype)
+	| VectorLiteralType(subtype) -> "Vector of " ^ (typeToString subtype)
 	| NeutralType -> "Neutral Type"
 
 let functionTypeToString = function
@@ -53,8 +55,9 @@ let logOperatorAst operator = logStringToAst (operatorToString operator)
 
 let rec logPlatoTypeAst = function
 	| BooleanType -> logStringToAst "BooleanType"
-	| NumberType(gropuName) -> logListToAst ["Number Type over group "; gropuName]
+	| NumberType(extendeGroupType, groupName) -> logListToAst ["Number Type over group "; extendeGroupType; groupName]
 	| SetLiteralType(subType) -> ignore (logListToAst ["SetLiteral Type of subtype "]); logPlatoTypeAst subType
+	| VectorLiteralType(subType) -> ignore (logListToAst ["VectorLiteral Type of subtype "]); logPlatoTypeAst subType
 	| NeutralType -> logStringToAst "NeutralType"
 
 let rec logExpressionAst = function
@@ -63,9 +66,21 @@ let rec logExpressionAst = function
 	| Identifier(identifierName) -> logListToAst ["Identifier"; identifierName]
 	| Unop(operator, expression) -> logOperatorAst operator; logExpressionAst expression
 	| Binop(operator, expression1, expression2) -> logOperatorAst operator; logExpressionAst expression1; logExpressionAst expression2
-	| SetLiteral(expressionList) -> 
+	| SetLiteral(expressionList) ->
 		logListToAst ["Set of"; string_of_int (List.length expressionList);"elements"];
 		ignore (List.map logExpressionAst expressionList)
+	| VectorLiteral(expressionList) ->
+		logListToAst ["Vector of"; string_of_int (List.length expressionList);"elements"];
+		ignore (List.map logExpressionAst expressionList)
+	| VectorRange(fromExpression, toExpression, byExpression) ->
+		logStringToAst "Vector range from ";
+    logExpressionAst fromExpression;
+	  logStringToAst " to ";
+    logExpressionAst toExpression;
+	  logStringToAst " by ";
+		logExpressionAst byExpression
+	| FunctionCall(functionName, expressionList) -> logStringToAst ""
+
 
 let logStatementAst = function
 	  Print(printValue) -> logStringToAst "Print"; logExpressionAst(printValue)
@@ -130,8 +145,9 @@ let logProgramAst = function
 (* Logging for PLATO SAST *)
 let rec typeToString = function
 	| BooleanType -> "Booleans"
-	| NumberType(groupName) -> groupName
-	| SetLiteralType(platoType) -> ("SetLiterals<" ^ (typeToString platoType) ^ ">")
+	| NumberType(_, groupName) -> groupName
+	| SetLiteralType(platoType) -> ("Set<" ^ (typeToString platoType) ^ ">")
+	| VectorLiteralType(platoType) -> ("Vector<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> "NeutralTypes"
 
 let logListToSast logStringList = 
@@ -144,23 +160,24 @@ let logOperatorSast operator = logStringToSast (operatorToString operator)
 
 let logPlatoTypeSast = function
 	| BooleanType -> logStringToSast "Boolean Type"
-	| NumberType(groupName) -> logListToSast ["Number Type over group"; groupName]
+	| NumberType(extendedGroupType, groupName) -> logListToSast ["Number Type over group"; extendedGroupType; groupName]
 	| SetLiteralType(platoType) -> logStringToSast ("SetLiterals<" ^ (typeToString platoType) ^ ">")
+	| VectorLiteralType(platoType) -> logStringToSast ("VectorLiterals<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> logStringToSast "Neutral Type"
 
 let rec logExpressionSast = function
 	| TypedBoolean(booleanValue, _) -> logListToSast ["Boolean"; string_of_bool booleanValue]
-	| TypedNumber(numberValue, numberType) -> logListToSast ["Number"; string_of_int numberValue; " over "; functionTypeToString numberType]
-  | TypedIdentifier(variableName, variableType) -> logListToSast ["Variable";  variableName; "of type"; functionTypeToString variableType]
+	| TypedNumber(numberValue, numberType) -> logListToSast ["Number"; string_of_int numberValue; " over "; typeToString numberType]
+  | TypedIdentifier(variableName, variableType) -> logListToSast ["Variable";  variableName; "of type"; typeToString variableType]
 	| TypedUnop(unaryOperator, operatorType, operatorExpression) -> 
 		logStringToSast "unary operator"; 
 		logOperatorSast unaryOperator;
-		logListToSast ["of type";  functionTypeToString operatorType];
+		logListToSast ["of type";  typeToString operatorType];
 		logStringToSast "acting on"; 
 		logExpressionSast operatorExpression;
 	| TypedBinop(binaryOperator, operatorType, operatorExpression1, operatorExpression2) -> 
 		logStringToSast "binary operator"; 
-		logListToSast ["of type";  functionTypeToString operatorType];
+		logListToSast ["of type";  typeToString operatorType];
 		logOperatorSast binaryOperator;
 		logStringToSast "acting on";
 		logExpressionSast operatorExpression1;
@@ -168,9 +185,24 @@ let rec logExpressionSast = function
 		logExpressionSast operatorExpression2
 	| TypedSet(platoType, expressionList) ->
 		logStringToSast "set literal";
-		logListToSast ["of type";  functionTypeToString platoType];
+		logListToSast ["of type";  typeToString platoType];
 		logStringToSast "containing the expressions";
 		ignore (List.map logExpressionSast expressionList)
+	| TypedVector(platoType, expressionList) ->
+		logStringToSast "vector literal";
+		logListToSast ["of type";  typeToString platoType];
+		logStringToSast "containing the expressions";
+		ignore (List.map logExpressionSast expressionList)
+	| TypedVectorRange(vectorType, fromExpression, toExpression, byExpression) ->
+		logStringToSast "vector range ";
+		logListToSast ["of type";  typeToString vectorType];
+	  logStringToSast " from ";
+    logExpressionSast fromExpression;
+	  logStringToSast " to ";
+    logExpressionSast toExpression;
+	  logStringToSast " by ";
+		logExpressionSast byExpression
+	| TypedFunctionCall(functionType, functionName, typedExpressionList) -> logStringToSast ""
 
 let logStatementSast = function
 	  TypedPrint(printExpression) -> 
