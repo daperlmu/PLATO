@@ -8,11 +8,6 @@ open Filename;;
 exception PlatoError of string
 exception DebugException of string
 
-(* TODO INTEGER d = v[1], two functions with param n, bare function expression *)
-(* TODO? functions in any order, no duplicate group names, quantifiers, add to logger *)
-(* TODO??? tuples, matrices *)
-
-
 let allTrue list = List.fold_left (&&) true list
 
 let undeclaredVariableException variableName = PlatoError("Undeclared identifier " ^ variableName)
@@ -568,7 +563,6 @@ let rec checkExpression globalEnv environment = function
 				in let listOfExpressionTypes = List.map extractPltTypeFromFuncType (List.map getExpressionType listOfCheckedExpressions)
 					in let listOfTypesOfParams = List.map (fun elem -> match elem with 
 																		Parameter(platoType, _) -> platoType) parameterList
-						(* TODO do pairwise matching based on canCast *)
 						in if listOfExpressionTypes=listOfTypesOfParams
 							then TypedFunctionCall(functionType, functionName, listOfCheckedExpressions)
 							else raise(functionCallParameterTypeMismatchException functionName)
@@ -592,7 +586,11 @@ let getTypedStmtBlockReturnType = function
 					| TypedIf(returnType, _, _, _, _) -> returnType
 					| _ -> VoidType ))
 let rec checkStatement globalEnv environment = function
-	| VoidCall(expression) -> TypedVoidCall(checkExpression globalEnv environment expression)
+	| VoidCall(expression) -> 
+		let typedExpression = checkExpression globalEnv environment expression 
+		in if (getExpressionType typedExpression) = VoidType
+		   then TypedVoidCall(checkExpression globalEnv environment expression)
+			 else raise(PlatoError("A bare statement can only contain a void function call"))
 	| Print(expression) -> TypedPrint(checkExpression globalEnv environment expression)
 	| Return(expression) -> 
 		let checkedExpression = checkExpression globalEnv environment expression
@@ -1038,7 +1036,9 @@ let rec generateJavaExpression logToJavaFile = function
 		if (methodName = "")
 		then (generateJavaParameters logToJavaFile javaExpressionList)
 		else if (className = "")
-		     then (logToJavaFile (methodName ^ "()"))
+		     then (logToJavaFile (methodName ^ "(");
+					    generateJavaParameters logToJavaFile javaExpressionList;
+							logToJavaFile ")")
 	       else let invokationString = (if String.contains className '.' then className else "(new " ^ className ^ "())") 
 					    in logToJavaFile (invokationString ^ "." ^ methodName ^ "(");
 				         generateJavaParameters logToJavaFile javaExpressionList;
