@@ -592,6 +592,7 @@ let getTypedStmtBlockReturnType = function
 					| TypedIf(returnType, _, _, _, _) -> returnType
 					| _ -> VoidType ))
 let rec checkStatement globalEnv environment = function
+	| VoidCall(expression) -> TypedVoidCall(checkExpression globalEnv environment expression)
 	| Print(expression) -> TypedPrint(checkExpression globalEnv environment expression)
 	| Return(expression) -> 
 		let checkedExpression = checkExpression globalEnv environment expression
@@ -693,26 +694,6 @@ let checkFunctionBlock globalEnv = function
 	  						then  
 	  							TypedFunctionDeclaration(functionHeader, checkedStatementBlock)
 	  						else raise(incompatibleTypesReturnStmt functionHeader.functionName (functionTypeToString functionHeader.returnType) (functionTypeToString stmtBlockReturnType))
-		  			(* in (match functionReturnType with
-		  					VoidType -> checkVoidFunction (FunctionDeclaration(functionHeader, statementBlock))
-		  					| OtherType(returnType) -> 
-		  						let functionEnvironment = emptyEnviroment
-		  							in let returnStmtsInFunctionBlock = getReturnStmts statementBlock
-		  								in if (List.length returnStmtsInFunctionBlock)=0
-	  									then raise(missingReturnStmtException functionHeader.functionName (typeToString returnType))
-	  									else
-  											(ignore (List.map (updateScope functionEnvironment.scope) (List.map convertParamToVarDec functionHeader.parameters));
-		  										let checkedStatementBlock = checkStatementBlock functionEnvironment statementBlock
-		  										
-				  								in let lastStmt = getLastStmtInBlock statementBlock
-				  								   in let lastStmtType = getExpressionType (extractExpressionFromStmt functionEnvironment lastStmt)
-				  									  in if not (lastStmtType=returnType)
-				  										 then raise(incompatibleTypesReturnStmt functionHeader.functionName (typeToString returnType) (typeToString lastStmtType))
-				  										 else TypedFunctionDeclaration(functionHeader, checkedStatementBlock)) *)
-				  												(*  - check if the returned expression can be cast up to the function's expected return type
-				  													- need to check all return statements in the function to make sure they are type compatible with the expected return type
-				  													- Check if last statement is actually a return statement
-				  												- check for unreachable code *)
 
 let rec generateTableHelper rowElements columnElements tableFunction tableSoFar =
 	match rowElements with
@@ -909,6 +890,7 @@ let rec createJavaExpression = function
 		JavaCall("VectorLiterals", "newPlatoVectorRange", [createJavaExpression fromExpression; createJavaExpression toExpression; createJavaExpression byExpression])
 
 let rec createJavaStatement = function
+	| TypedVoidCall(expression) -> JavaStatement(JavaCall("", "", [createJavaExpression expression]))
 	| TypedPrint(expression) -> JavaStatement(JavaCall("System.out", "println", [createJavaExpression expression]))
 	| TypedReturn(_, expression) -> JavaStatement(JavaReturn(createJavaExpression expression))
 	| TypedIf(_, typedExpression, typedStatementBlock, typedElseIfBlockList, typedElseBlock) -> 
@@ -1047,24 +1029,25 @@ let rec generateJavaExpression logToJavaFile = function
 		generateJavaExpression logToJavaFile variableValue;
 		logToJavaFile (")");
 	| JavaDeclaration(variableType, variableName, variableValue) ->
-	  (generateJavaType logToJavaFile variableType;
+	  generateJavaType logToJavaFile variableType;
 		logToJavaFile (variableName ^ "=");
-		match variableValue with
+		(match variableValue with
 		  | Some(javaExpressionValue) -> generateJavaExpression logToJavaFile javaExpressionValue
 		  | None -> () (* do nothing *))
-	| JavaCall(className, methodName, javaExpressionList) -> 
-			let invokationString = (if String.contains className '.' then className else "(new " ^ className ^ "())")
-			in (if className = ""
-				then 
-					logToJavaFile (methodName ^ "(")
-				else 
-					logToJavaFile (invokationString ^ "." ^ methodName ^ "("));
-				(match javaExpressionList with
-					[] -> ()
-					| [first] -> ignore (generateJavaExpression logToJavaFile first)
-					| first::rest -> ignore (generateJavaExpression logToJavaFile first);
-					   ignore (List.map (fun elem -> logToJavaFile ","; generateJavaExpression logToJavaFile elem) rest));
-				logToJavaFile ")"
+	| JavaCall(className, methodName, javaExpressionList) ->
+		if (methodName = "")
+		then (generateJavaParameters logToJavaFile javaExpressionList)
+		else if (className = "")
+		     then (logToJavaFile (methodName ^ "()"))
+	       else let invokationString = (if String.contains className '.' then className else "(new " ^ className ^ "())") 
+					    in logToJavaFile (invokationString ^ "." ^ methodName ^ "(");
+				         generateJavaParameters logToJavaFile javaExpressionList;
+				         logToJavaFile ")"
+and generateJavaParameters logToJavaFile = function
+	| [] -> ()
+	| [first] -> ignore (generateJavaExpression logToJavaFile first)
+	| first::rest -> ignore (generateJavaExpression logToJavaFile first);
+	                 ignore (List.map (fun elem -> logToJavaFile ","; generateJavaExpression logToJavaFile elem) rest) 
 and generateJavaElseIf logToJavaFile = function
 	  JavaElseIf(javaExpression, javaBlock) ->
 			logToJavaFile "else if("; 

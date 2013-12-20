@@ -1,8 +1,8 @@
 { open Parser open Logger}
 
 rule token = parse
-    [' ' '\t' '\r' '\n'] { token lexbuf }
-    | "/*"     { comment lexbuf }
+  | [' ' '\t' '\r' '\n'] { token lexbuf }
+  | "/*"     { comment lexbuf }
 	| "BOOLEAN" { BOOLEAN_TYPE }
 	| "INTEGER" { INTEGER_TYPE }
 	| "NUMBER" { NUMBER_TYPE }
