@@ -46,6 +46,7 @@ type expression =
 	| VectorRange of expression * expression * expression
 
 type statement =
+	| VoidCall of expression
 	| Print of expression
 	| Return of expression
 	| If of expression * statementBlock * elseIfBlock list * elseBlock

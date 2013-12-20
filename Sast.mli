@@ -17,6 +17,7 @@ type typedExpression =
 	| TypedFunctionCall of Ast.platoFunctionType * string * typedExpression list
 
 type typedStatement = 
+	| TypedVoidCall of typedExpression
 	| TypedPrint of typedExpression
 	| TypedReturn of Ast.platoFunctionType * typedExpression
 	| TypedIf of Ast.platoFunctionType * typedExpression * typedStatementBlock * typedElseIfBlock list * typedElseBlock

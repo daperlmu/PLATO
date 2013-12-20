@@ -80,18 +80,53 @@ let rec logExpressionAst = function
     logExpressionAst toExpression;
 	  logStringToAst " by ";
 		logExpressionAst byExpression
-	| FunctionCall(functionName, expressionList) -> logStringToAst ""
+	| FunctionCall(functionName, expressionList) -> 
+		logListToAst ["Call to"; functionName; "with parameters"];
+		ignore (List.map logExpressionAst expressionList)
 
 
-let logStatementAst = function
-	  Print(printValue) -> logStringToAst "Print"; logExpressionAst(printValue)
-	| Return(expression) -> logStringToAst "Return"; logExpressionAst(expression)
-	| Assignment(identifier, rhs) -> logStringToAst "Assignment"; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
-	| Declaration(platoType, identifier, rhs) -> logStringToAst "Declaration"; logPlatoTypeAst platoType; logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
-	| _ -> ()
-		
-let logStatementBlockAst = function
+let rec logStatementAst = function
+	| VoidCall(voidFunction) -> 
+		logStringToAst "Void call to";
+		logExpressionAst voidFunction
+	| Print(printValue) -> 
+		logStringToAst "Print"; 
+		logExpressionAst(printValue)
+	| Return(expression) -> 
+		logStringToAst "Return"; 
+		logExpressionAst(expression)
+	| If(predicate, ifBody, elseIfBlocks, elseBlock) ->
+	  logListToAst ["If statement with"; string_of_int (List.length elseIfBlocks); "else if blocks and an else block"];
+		logExpressionAst predicate;
+		logStatementBlockAst ifBody;
+		ignore (List.map logElseIfBlockAst elseIfBlocks);
+		logElseBlockAst elseBlock
+	| IfNoElse(predicate, ifBody, elseIfBlocks) ->
+	  logListToAst ["If statement with"; string_of_int (List.length elseIfBlocks); "else if blocks"];
+		logExpressionAst predicate;
+		logStatementBlockAst ifBody;
+		ignore (List.map logElseIfBlockAst elseIfBlocks)
+	| Assignment(identifier, rhs) ->  
+		logListToAst ["Assignment of identifier"; identifier; "to"]; 
+		logExpressionAst rhs
+	| VectorAssignment(identifier, indexer, rhs) -> 
+		logListToAst ["Vector assignment of identifier"; identifier]; 
+		logStringToAst "with indexer";
+		logExpressionAst indexer;
+		logStringToAst "to";
+		logExpressionAst rhs
+	| Declaration(platoType, identifier, rhs) -> 
+		logStringToAst "Declaration"; logPlatoTypeAst platoType; 
+		logListToAst ["Identifier"; identifier]; logExpressionAst(rhs)
+and logStatementBlockAst = function
 	  StatementBlock(statementList) -> logListToAst ["StatementBlock of size"; string_of_int (List.length statementList)]; ignore (List.map logStatementAst statementList)
+and logElseIfBlockAst =  function
+	| ElseIfBlock(predicate, elseIfBody) ->
+		logExpressionAst predicate;
+		logStatementBlockAst elseIfBody;
+and logElseBlockAst = function		
+	| ElseBlock(elseBody) ->
+		logStatementBlockAst elseBody
 		
 let logMainBlockAst = function
 	  MainBlock(statementBlock) -> logStringToAst "MainBlock"; logStatementBlockAst statementBlock
@@ -203,29 +238,56 @@ let rec logExpressionSast = function
     logExpressionSast toExpression;
 	  logStringToSast " by ";
 		logExpressionSast byExpression
-	| TypedFunctionCall(functionType, functionName, typedExpressionList) -> logStringToSast ""
+	| TypedFunctionCall(functionType, functionName, typedExpressionList) -> 
+		logListToSast ["Call to"; functionName; "of type"; functionTypeToString functionType; "with parameters"];
+		ignore (List.map logExpressionSast typedExpressionList)
 
-let logStatementSast = function
-	  TypedPrint(printExpression) -> 
+let rec logStatementSast = function
+	| TypedVoidCall(voidFunction) -> 
+		logStringToSast "Void call to";
+		logExpressionSast voidFunction
+	| TypedPrint(printExpression) -> 
 			logStringToSast "Print"; 
 			logExpressionSast(printExpression)
-	| TypedReturn(_, returnExpression) ->
-			logStringToSast "Return";
+	| TypedReturn(returnType, returnExpression) ->
+			logListToSast ["Return of typ"; functionTypeToString returnType];
 			logExpressionSast(returnExpression)
+	| TypedIf(returnType, predicate, ifBody, elseIfBlocks, elseBlock) ->
+	  logListToSast ["If statement with"; string_of_int (List.length elseIfBlocks); "else if blocks and an else block and return type"; functionTypeToString returnType];
+		logExpressionSast predicate;
+		logStatementBlockSast ifBody;
+		ignore (List.map logElseIfBlockSast elseIfBlocks);
+		logElseBlockSast elseBlock
+	| TypedIfNoElse(predicate, ifBody, elseIfBlocks) ->
+	  logListToSast ["If statement with"; string_of_int (List.length elseIfBlocks); "else if blocks"];
+		logExpressionSast predicate;
+		logStatementBlockSast ifBody;
+		ignore (List.map logElseIfBlockSast elseIfBlocks);
 	| TypedAssignment((variableName, variableType), newValue) -> 
 		logListToSast ["Assign"; variableName; "of type"]; 
 		logPlatoTypeAst variableType;
 		logStringToSast " to value "; 
 		logExpressionSast(newValue)
+	| TypedVectorAssignment((identifier, vectorType), indexer, rhs) -> 
+		logListToSast ["Vector assignment of identifier"; identifier; "of type"; typeToString vectorType]; 
+		logStringToSast "with indexer";
+		logExpressionSast indexer;
+		logStringToSast "to";
+		logExpressionSast rhs
 	| TypedDeclaration((variableName, variableType), newValue) ->
 	  logListToSast ["Declare"; variableName;  "as type"]; 
 		logPlatoTypeSast variableType;
 		logStringToSast "and assign to value "; 
 		logExpressionSast(newValue)
-	| _ -> ()
-
-let logStatementBlockSast = function
+and logStatementBlockSast = function
 	  TypedStatementBlock(statementList) -> logListToSast ["StatementBlock of size"; string_of_int (List.length statementList)]; ignore (List.map logStatementSast statementList)
+and logElseIfBlockSast =  function
+	| TypedElseIfBlock(predicate, elseIfBody) ->
+		logExpressionSast predicate;
+		logStatementBlockSast elseIfBody
+and logElseBlockSast = function		
+	| TypedElseBlock(elseBody) ->
+		logStatementBlockSast elseBody		
 
 let logMainBlockSast = function
 	  TypedMainBlock(statementBlock) -> logStringToSast "MainBlock"; logStatementBlockSast statementBlock

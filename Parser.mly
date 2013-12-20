@@ -100,6 +100,7 @@ expression:
 	
 
 statement:
+  | expression SEMICOLON { VoidCall($1) }
   | PRINT expression SEMICOLON { Print($2) }
   | RETURN expression SEMICOLON { Return($2) }
   | IF LPAREN expression RPAREN statementBlock elseIfBlockList elseBlock { If($3, $5, List.rev $6, $7) }
