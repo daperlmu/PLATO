@@ -1067,7 +1067,7 @@ let rec generateJavaExpression logToJavaFile = function
 								logToJavaFile ("):")) casesExpressionsList);
 		logToJavaFile ("(");
 		generateJavaExpression logToJavaFile defaultCase;
-		logToJavaFile ("))")
+		logToJavaFile ("))") (* e^(PI*i)-1=0 *)
 	| JavaCall(className, methodName, javaExpressionList) ->
 		if (methodName = "")
 		then (generateJavaParameters logToJavaFile javaExpressionList)
