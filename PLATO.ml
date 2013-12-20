@@ -8,6 +8,11 @@ open Filename;;
 exception PlatoError of string
 exception DebugException of string
 
+(* TODO INTEGER d = v[1], two functions with param n, bare function expression *)
+(* TODO? functions in any order, no duplicate group names, quantifiers, add to logger *)
+(* TODO??? tuples, matrices *)
+
+
 let allTrue list = List.fold_left (&&) true list
 
 let undeclaredVariableException variableName = PlatoError("Undeclared identifier " ^ variableName)
@@ -163,6 +168,12 @@ let getExpressionType = function
 	| TypedQuantifier(expressionType, _) -> expressionType
 	*)
 
+let canApplyAt = function
+	| [NumberType("field", "Integers"); VectorLiteralType(NumberType("field", "Integers"))] -> true
+	| [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> true
+	| [VectorLiteralType(NumberType("field", "Integers")); VectorLiteralType(NumberType("field", "Integers"))] -> true
+	| _ -> false
+
 let canApplyNot = function
 	| [BooleanType] -> true
 	| [VectorLiteralType(BooleanType)] -> true
@@ -276,11 +287,12 @@ let canApplyOperator inputTypeList operatorType =
 													OtherType(pltType) -> pltType
 													| _ -> raise(DebugException("If this point was reached, cannot have voidType"))) inputTypeList
 				in (match operatorType with 
+				      | At -> canApplyAt pltInputTypeList 
 							| Not -> canApplyNot pltInputTypeList
 							| And -> canApplyAnd pltInputTypeList
 							| Or -> canApplyOr pltInputTypeList
 							| Negation -> canApplyNegation pltInputTypeList
-						  	| Plus -> canApplyPlus pltInputTypeList
+						  | Plus -> canApplyPlus pltInputTypeList
 							| Minus -> canApplyMinus pltInputTypeList
 							| Times -> canApplyTimes pltInputTypeList
 							| Divide -> canApplyDivide pltInputTypeList
@@ -298,9 +310,15 @@ let getOperatorReturnType inputTypes operatorType =
 	let pltInputTypeList = List.map (fun elem -> match elem with
 													OtherType(pltType) -> pltType
 													| _ -> raise(DebugException("If this point was reached, cannot have voidType"))) inputTypes
-	 in ( match operatorType with
-			| Not ->
-			 (match pltInputTypeList with 
+	 in (match operatorType with
+		| At ->
+			(match pltInputTypeList with 
+			 | [VectorLiteralType(NumberType("field", "Integers")); NumberType("field", "Integers")] -> VectorLiteralType(NumberType("field", "Integers"))
+			 | [NumberType("field", "Integers"); VectorLiteralType(NumberType("field", "Integers"))] -> VectorLiteralType(NumberType("field", "Integers"))
+	     | [VectorLiteralType(NumberType("field", "Integers")); VectorLiteralType(NumberType("field", "Integers"))] -> VectorLiteralType(NumberType("field", "Integers"))
+			 | _ -> raise(PlatoError("Less than must have exactly have two input types")))
+		| Not ->
+			(match pltInputTypeList with 
 			 | [BooleanType] -> BooleanType
 			 | [VectorLiteralType(BooleanType)] -> VectorLiteralType(BooleanType)
 			 | _ -> raise(PlatoError("Not must have exactly have one boolean input type")))
@@ -397,6 +415,7 @@ let getOperatorReturnType inputTypes operatorType =
 		)
 
 let getOperatorCallClass inputTypeList = function
+	| At -> "VectorLiterals"
 	| Not -> "Booleans"
 	| And -> "Booleans"
 	| Or -> "Booleans"
@@ -1114,11 +1133,7 @@ let generateJavaClass fileName = function
 						     logToJavaFile (String.concat " " ["public class"; fullClassName; extendsString; "{\n"]);  
 				         ignore (List.map (generateJavaMethod logToJavaFile) javaMethodList);
 			           logToJavaFile "}\n"
-
-let generatePlatoCommonClass = 
-	let logToCommonClassFile = logToFileOverwrite false "PlatoCommon.java"
-	in logToCommonClassFile commonClassString
-			
+		
 let generatePlatoBooleanClass = 
 	let logToBooleanClassFile = logToFileOverwrite false "Booleans.java"
 	in logToBooleanClassFile booleanClassString
@@ -1156,7 +1171,6 @@ let generatePlatoFieldClass =
 	in logToFieldClassFile fieldClassString	
 
 let generatePlatoClasses = 
-	generatePlatoCommonClass;
 	generatePlatoBooleanClass;
 	generatePlatoIntegerClass;
 	generatePlatoSetLiteralsClass;

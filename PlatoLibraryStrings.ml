@@ -1,15 +1,3 @@
-(* TODO casting here *)
-let commonClassString = 
-	"public class PlatoCommon { 
-	  public Object cast(Object object, String fromType, String toType) { 
-		  if (fromType.equals(toType)) { 
-				return object;
-			} else { 
-			  return null
-			}
-		}
-	}"
-
 let booleanClassString = 
 		"public class Booleans { 
 		  public Boolean not(Object bool) {
@@ -296,7 +284,7 @@ let vectorLiteralsClassString =
   public static Object vectorAccess(PlatoVector<Object> vec, Integer index) {
   	return vec.get(index-1);
   }
-	public static PlatoVector vectorAccess(PlatoVector<Object> vec, PlatoVector<Object> indexer) {
+	public static PlatoVector<Object> vectorAccess(PlatoVector<Object> vec, PlatoVector<Object> indexer) {
   	PlatoVector<Object> returnable = new PlatoVector<Object>();
 		for (int index = 0; index < vec.size(); index++) {
 		  if ((Boolean) indexer.get(index)) {
@@ -305,6 +293,21 @@ let vectorLiteralsClassString =
 		}
 		return returnable;
   }
+	public static PlatoVector<Object> at(PlatoVector<Object> vec, Object val) {
+		 PlatoVector<Object> returnable = vec;
+		 returnable.add(val);
+		 return returnable;
+	}
+  public static PlatoVector<Object> at(Object val, PlatoVector<Object> vec) {
+		 PlatoVector<Object> returnable = vec;
+		 returnable.add(val);
+		 return returnable;
+	}
+ public static PlatoVector<Object> at(PlatoVector<Object> vec1, PlatoVector<Object> vec2) {
+		 PlatoVector<Object> returnable = vec1;
+		 returnable.addAll(vec2);
+		 return returnable;
+	}
 }"
 
 let platoVectorClassString = 

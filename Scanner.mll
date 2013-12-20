@@ -32,6 +32,7 @@ rule token = parse
 	| "elseif" { ELSEIF }
 	| "else" { ELSE }
 	| "main()" { MAIN_HEADER }
+	| '@' { AT }
 	| '+' { PLUS }
 	| '-' { MINUS }
 	| '\\' { BACKSLASH }
