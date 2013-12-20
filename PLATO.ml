@@ -36,11 +36,11 @@ let voidFunctionHasReturnException functionName = PlatoError("Function: " ^ func
 
 let missingReturnStmtException functionName functionReturnType = PlatoError("Function: " ^ functionName ^ " is a typed function of type " ^ functionReturnType ^ ". Missing return statement. Expecting return statement of type " ^ functionReturnType ^ ".")
 
-let incompatibleTypesReturnStmt functionName functionReturnType  = PlatoError("Return statement incompatible types for the Function: " ^ functionName ^ ". Required: " ^ functionReturnType)
+let incompatibleTypesReturnStmt functionName functionReturnType actualReturn  = PlatoError("Return statement incompatible types for the Function: " ^ functionName ^ ". Required: " ^ functionReturnType ^ ". Found: " ^ actualReturn)
 
 let noneBooleanExpressionInElseIf expressionType = PlatoError("elseif statements expect an expression of type boolean. Actual type of expression: " ^ (typeToString expressionType))
 let noneBooleanExpressionInIf expressionType = PlatoError("if statements expect an expression of type boolean. Actual type of expression: " ^ (typeToString expressionType))
-let unreachableCodeException functionName = PlatoError("Function: " ^ functionName ^ " has unreachable code!")
+let unreachableCodeException = PlatoError("Function has unreachable code!")
 
 let functionCallParameterTypeMismatchException functionName = PlatoError("Function call: " ^ functionName ^ " with the list of provided of parameters could not be matched to any existing function.")
 
@@ -90,6 +90,10 @@ let evaluateSimpleBinaryFunction input1 input2 = function
 	| _ -> raise(PlatoError("Functions in groups, rings or fields can only be add or multiply"))
 
 (* Convert Ast to Sast *)
+let extractPltTypeFromFuncType = function
+	OtherType(pltType) -> pltType
+	| _ -> raise(DebugException("If this point was reached, cannot have voidType"))
+
 let canCast fromType toType = 
   if fromType = toType
 	then true
@@ -97,6 +101,11 @@ let canCast fromType toType =
 		match toType with
 		| NumberType(_, _) -> (fromType = NumberType("field", "Integers"))
 		| _ -> false
+
+let canFunctionCast funcType1 funcType2 =
+	match funcType1 with
+		VoidType -> funcType2=VoidType
+		| OtherType(pltType) -> canCast pltType (extractPltTypeFromFuncType funcType2)
 
 type symbolTable = {
   mutable variables : variableDeclaration list;
@@ -493,10 +502,6 @@ let getOperatorCallClass inputTypeList = function
 		 | [VectorLiteralType(_); _] -> ("VectorLiterals")
 		 | _ -> raise(operatorException VectorAccess inputTypeList)) 
 
-let extractPltTypeFromFuncType = function
-	OtherType(pltType) -> pltType
-	| _ -> raise(DebugException("If this point was reached, cannot have voidType"))
-
 let rec checkExpression globalEnv environment = function
 	| Boolean(booleanValue) -> TypedBoolean(booleanValue, BooleanType)
 	| Number(numberValue) -> TypedNumber(numberValue, NumberType("field", "Integers"))
@@ -575,11 +580,17 @@ let getTypedStmtBlockReturnType = function
 		then VoidType
 		else
 		(* everything but last stmt should have VoidType, otherwise exception *)
+			((ignore (List.map (fun stmt -> match stmt with
+					TypedReturn(returnType, _) -> raise(unreachableCodeException)
+					| TypedIf(returnType, _, _, _, _) -> (match returnType with
+																VoidType -> ()
+																| _ -> raise(unreachableCodeException))
+					| _ -> ()) (List.tl (List.rev typedStatementList))));
 			let lastStmt = List.hd (List.rev typedStatementList)
 			in  ( match lastStmt with
 					TypedReturn(returnType, _) -> returnType
 					| TypedIf(returnType, _, _, _, _) -> returnType
-					| _ -> VoidType )
+					| _ -> VoidType ))
 let rec checkStatement globalEnv environment = function
 	| VoidCall(expression) -> TypedVoidCall(checkExpression globalEnv environment expression)
 	| Print(expression) -> TypedPrint(checkExpression globalEnv environment expression)
@@ -679,10 +690,10 @@ let checkFunctionBlock globalEnv = function
 	  		   		(ignore (updateGlobalScopeWithFunction globalEnv.globalScope functionHeader.functionName functionHeader.returnType functionHeader.parameters));
 	  			   let checkedStatementBlock = checkStatementBlock globalEnv functionEnvironment statementBlock
 	  			 	in let stmtBlockReturnType = getTypedStmtBlockReturnType checkedStatementBlock
-	  					in if(functionReturnType=stmtBlockReturnType)
+	  					in if canFunctionCast stmtBlockReturnType functionReturnType
 	  						then  
 	  							TypedFunctionDeclaration(functionHeader, checkedStatementBlock)
-	  						else raise(incompatibleTypesReturnStmt functionHeader.functionName (functionTypeToString functionHeader.returnType))
+	  						else raise(incompatibleTypesReturnStmt functionHeader.functionName (functionTypeToString functionHeader.returnType) (functionTypeToString stmtBlockReturnType))
 
 let rec generateTableHelper rowElements columnElements tableFunction tableSoFar =
 	match rowElements with
