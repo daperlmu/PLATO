@@ -159,6 +159,8 @@ let getExpressionType = function
 	| TypedFunctionCall(expressionType, _, _) -> expressionType
 	| TypedVector(expressionType, _) -> OtherType(expressionType)
 	| TypedVectorRange(_, _, _, _) -> OtherType(VectorLiteralType(NumberType("field", "Integers")))
+	| TypedCases(CasesLiteralType(expressionType), _, _) -> OtherType(expressionType)
+	| TypedCases(_, _, _) -> raise(PlatoError("Wrong type for typed cases literal"))
 	(*
 	| TypedQuantifier(expressionType, _) -> expressionType
 	*)
@@ -545,6 +547,26 @@ let rec checkExpression globalEnv environment = function
 				 		in if allTrue (List.map (fun arg1 -> (headExpressionType=arg1)) expressionTypeList)
 				 			 then TypedVector(VectorLiteralType(extractPltTypeFromFuncType (List.hd expressionTypeList)), vectorExpressionList)
 				 			 else raise(heterogeneousVectorLiteralException (List.map extractPltTypeFromFuncType expressionTypeList))))
+	| CasesLiteral(casePairsList, defaultReturn) ->
+		let defaultReturnExpression = checkExpression globalEnv environment defaultReturn
+		in let defaultReturnType = extractPltTypeFromFuncType (getExpressionType defaultReturnExpression)
+		in 
+		(match casePairsList with
+			[] -> TypedCases(CasesLiteralType(defaultReturnType), [], defaultReturnExpression)
+			| _ -> (let caseExpressionList = List.map 
+				(fun (x, y) ->
+				                                     (checkExpression globalEnv environment x,
+				                                     checkExpression globalEnv environment y)) casePairsList
+					in let expressionTypeList = List.map 
+					                           (fun (x, y) -> 
+					                           	 (extractPltTypeFromFuncType (getExpressionType x),
+					                           	 	extractPltTypeFromFuncType (getExpressionType y)))
+					                           caseExpressionList
+					in ignore (List.map (fun (x,y)-> if x<>defaultReturnType || y<>BooleanType then raise(PlatoError("Cases literal has inconsistent types"))) expressionTypeList);
+					TypedCases(CasesLiteralType(defaultReturnType), caseExpressionList, defaultReturnExpression)
+		))
+
+
 	| VectorRange(fromExpression, toExpression, byExpression) ->
 		let fromExpression, toExpression, byExpression = (checkExpression globalEnv environment fromExpression), (checkExpression globalEnv environment toExpression), (checkExpression globalEnv environment byExpression)
 	  in let fromExpressionType, toExpressionType, byExpressionType = (getExpressionType fromExpression), (getExpressionType toExpression), (getExpressionType byExpression)
@@ -868,6 +890,7 @@ let createJavaType = function
 	| NumberType(_, _) -> JavaIntType
 	| SetLiteralType(_) -> JavaSetLiteralType
 	| VectorLiteralType(_) -> JavaVectorLiteralType
+	| CasesLiteralType(_) -> JavaCasesLiteralType
 	| NeutralType -> JavaNeutralType
 
 let rec createJavaExpression = function
@@ -886,6 +909,8 @@ let rec createJavaExpression = function
 		JavaCall("VectorLiterals", "newPlatoVector", List.map createJavaExpression vectorExpressionList)
 	| TypedVectorRange(vectorType, fromExpression, toExpression, byExpression) ->
 		JavaCall("VectorLiterals", "newPlatoVectorRange", [createJavaExpression fromExpression; createJavaExpression toExpression; createJavaExpression byExpression])
+	| TypedCases(casesType, casesExpressionsList, defaultExpression) ->
+		JavaTernaryChain(List.map (fun (x,y) -> (createJavaExpression x, createJavaExpression y)) casesExpressionsList, createJavaExpression defaultExpression)
 
 let rec createJavaStatement = function
 	| TypedVoidCall(expression) -> JavaStatement(JavaCall("", "", [createJavaExpression expression]))
@@ -979,6 +1004,7 @@ let generateJavaType logToJavaFile = function
 	| JavaIntType -> logToJavaFile "int "
 	| JavaSetLiteralType -> logToJavaFile "PlatoSet<Object> "
 	| JavaVectorLiteralType -> logToJavaFile "PlatoVector<Object> "
+	| JavaCasesLiteralType -> raise(PlatoError("JavaCasesLiteralType has no direct java object type"))
 	| JavaNeutralType -> logToJavaFile "Object "
 
 let generateJavaPrimitive logToJavaFile = function
@@ -1032,6 +1058,16 @@ let rec generateJavaExpression logToJavaFile = function
 		(match variableValue with
 		  | Some(javaExpressionValue) -> generateJavaExpression logToJavaFile javaExpressionValue
 		  | None -> () (* do nothing *))
+	| JavaTernaryChain(casesExpressionsList, defaultCase) ->
+		logToJavaFile ("(");
+		ignore (List.map (fun (x, y) -> logToJavaFile ("(");
+								generateJavaExpression logToJavaFile y;
+								logToJavaFile (")?(");
+								generateJavaExpression logToJavaFile x;
+								logToJavaFile ("):")) casesExpressionsList);
+		logToJavaFile ("(");
+		generateJavaExpression logToJavaFile defaultCase;
+		logToJavaFile ("))")
 	| JavaCall(className, methodName, javaExpressionList) ->
 		if (methodName = "")
 		then (generateJavaParameters logToJavaFile javaExpressionList)

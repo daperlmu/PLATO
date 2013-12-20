@@ -23,6 +23,7 @@ type platoType =
 	| NumberType of string * string
 	| SetLiteralType of platoType
 	| VectorLiteralType of platoType
+	| CasesLiteralType of platoType
 	| NeutralType
 
 type platoQuantifier =
@@ -44,6 +45,7 @@ type expression =
 	| FunctionCall of string * expression list
 	| VectorLiteral of expression list
 	| VectorRange of expression * expression * expression
+	| CasesLiteral of (expression * expression) list * expression
 
 type statement =
 	| VoidCall of expression

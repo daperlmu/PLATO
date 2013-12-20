@@ -5,6 +5,7 @@ type javaType =
 	| JavaIntType
 	| JavaSetLiteralType
 	| JavaVectorLiteralType
+	| JavaCasesLiteralType
 	| JavaNeutralType
 
 type javaPrimitive = 
@@ -25,6 +26,7 @@ type javaExpression =
 	| JavaVectorAssignment of string * javaExpression * javaExpression
 	| JavaDeclaration of javaType * string * javaExpression option
 	| JavaCall of string * string * javaExpression list
+	| JavaTernaryChain of (javaExpression * javaExpression) list * javaExpression
 and javaElseIf = 
 	JavaElseIf of javaExpression * javaBlock
 and javaElse = 

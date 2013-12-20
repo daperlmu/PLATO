@@ -7,7 +7,7 @@
 %token LESS_THAN GREATER_THAN EQUAL
 %token AT PLUS MINUS BACKSLASH TIMES DIVIDE PERCENT CARET AND OR 
 %token OVER PRINT RETURN GROUP RING FIELD ELEMENTS ADD MULTIPLY
-%token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET IF ELSEIF ELSE
+%token COLON COMMA SEMICOLON LPAREN RPAREN OPEN_BRACE CLOSE_BRACE MAIN_HEADER EOF OPEN_BRACKET CLOSE_BRACKET IF ELSEIF ELSE OTHERWISE
 %token <bool> BOOLEAN
 %token <int> NUMBER
 %token <string> IDENTIFIER
@@ -17,7 +17,7 @@
 %left AND
 %left EQUAL
 %left LESS_THAN LESS_THAN_OR_EQUAL GREATER_THAN GREATER_THAN_OR_EQUAL
-%left PLUS MINUS BACKSLASH
+%left PLUS MINUS BACKSLASH AT
 %left TIMES DIVIDE PERCENT
 %nonassoc NOT NEGATION
 %right CARET
@@ -65,15 +65,21 @@ quantifier:
 /*
 	WHICH_QUANTIFIER {WhichQuantifier}
 */
+semicolonSeparatedCaseExpressionNonemptyList:
+	expression IF expression { [($1, $3)] }
+	| semicolonSeparatedCaseExpressionNonemptyList SEMICOLON expression IF expression { ($3, $5)::$1 }
+
+casesLiteral:
+	 OPEN_BRACE semicolonSeparatedCaseExpressionNonemptyList SEMICOLON expression OTHERWISE CLOSE_BRACE { CasesLiteral(List.rev $2, $4) }
 
 expression:
-  | BOOLEAN { Boolean($1) }
+	| BOOLEAN { Boolean($1) }
 	|	NUMBER { Number($1) }
 	| IDENTIFIER { Identifier($1) }
 	| IDENTIFIER OPEN_BRACKET expression CLOSE_BRACKET { Binop(VectorAccess, Identifier($1), $3) }
 	| NOT expression { Unop(Not, $2) }
 	| MINUS expression %prec NEGATION	{ Unop(Negation, $2) }
-  | expression OR expression { Binop(Or, $1, $3) }
+	| expression OR expression { Binop(Or, $1, $3) }
 	| expression AND expression { Binop(And, $1, $3) }
 	| expression PLUS expression { Binop(Plus, $1, $3) }
 	| expression MINUS expression { Binop(Minus, $1, $3) }
@@ -97,7 +103,7 @@ expression:
 	*/
 	| OPEN_BRACKET expression VECTOR_TO expression CLOSE_BRACKET { VectorRange($2, $4, Number(1)) }
 	| OPEN_BRACKET expression VECTOR_TO expression VECTOR_BY expression CLOSE_BRACKET { VectorRange($2, $4, $6) }
-	
+	| casesLiteral { $1 }
 
 statement:
   | expression SEMICOLON { VoidCall($1) }

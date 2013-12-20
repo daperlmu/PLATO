@@ -28,6 +28,7 @@ let rec typeToString = function
 	| NumberType(extendeGroupType, groupName) -> "Number over " ^ extendeGroupType ^ groupName
 	| SetLiteralType(subtype) -> "Set of " ^ (typeToString subtype)
 	| VectorLiteralType(subtype) -> "Vector of " ^ (typeToString subtype)
+	| CasesLiteralType(subtype) -> "Set of Cases of type " ^ (typeToString subtype)
 	| NeutralType -> "Neutral Type"
 
 let functionTypeToString = function
@@ -59,6 +60,7 @@ let rec logPlatoTypeAst = function
 	| NumberType(extendeGroupType, groupName) -> logListToAst ["Number Type over group "; extendeGroupType; groupName]
 	| SetLiteralType(subType) -> ignore (logListToAst ["SetLiteral Type of subtype "]); logPlatoTypeAst subType
 	| VectorLiteralType(subType) -> ignore (logListToAst ["VectorLiteral Type of subtype "]); logPlatoTypeAst subType
+	| CasesLiteralType(subType) -> ignore (logListToAst ["CasesLiteral Type of subtype "]); logPlatoTypeAst subType
 	| NeutralType -> logStringToAst "NeutralType"
 
 let rec logExpressionAst = function
@@ -80,10 +82,10 @@ let rec logExpressionAst = function
     logExpressionAst toExpression;
 	  logStringToAst " by ";
 		logExpressionAst byExpression
+	| CasesLiteral(cases, defaultCase) -> logStringToAst "Cases Literal "
 	| FunctionCall(functionName, expressionList) -> 
 		logListToAst ["Call to"; functionName; "with parameters"];
 		ignore (List.map logExpressionAst expressionList)
-
 
 let rec logStatementAst = function
 	| VoidCall(voidFunction) -> 
@@ -184,6 +186,7 @@ let rec typeToString = function
 	| NumberType(_, groupName) -> groupName
 	| SetLiteralType(platoType) -> ("Set<" ^ (typeToString platoType) ^ ">")
 	| VectorLiteralType(platoType) -> ("Vector<" ^ (typeToString platoType) ^ ">")
+	| CasesLiteralType(platoType) -> ("Cases<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> "NeutralTypes"
 
 let logListToSast logStringList = 
@@ -199,6 +202,7 @@ let logPlatoTypeSast = function
 	| NumberType(extendedGroupType, groupName) -> logListToSast ["Number Type over group"; extendedGroupType; groupName]
 	| SetLiteralType(platoType) -> logStringToSast ("SetLiterals<" ^ (typeToString platoType) ^ ">")
 	| VectorLiteralType(platoType) -> logStringToSast ("VectorLiterals<" ^ (typeToString platoType) ^ ">")
+	| CasesLiteralType(platoType) -> logStringToSast ("CasesLiterals<" ^ (typeToString platoType) ^ ">")
 	| NeutralType -> logStringToSast "Neutral Type"
 
 let rec logExpressionSast = function
@@ -238,6 +242,9 @@ let rec logExpressionSast = function
     logExpressionSast toExpression;
 	  logStringToSast " by ";
 		logExpressionSast byExpression
+	| TypedCases(pltType, _, _) ->
+	  logStringToSast " Cases of type ";
+	  logStringToSast (typeToString pltType)
 	| TypedFunctionCall(functionType, functionName, typedExpressionList) -> 
 		logListToSast ["Call to"; functionName; "of type"; functionTypeToString functionType; "with parameters"];
 		ignore (List.map logExpressionSast typedExpressionList)

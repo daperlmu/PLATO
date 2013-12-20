@@ -28,9 +28,10 @@ rule token = parse
 	| "elements" { ELEMENTS }
 	| "add" { ADD }
 	| "multiply" { MULTIPLY }
-	| "if" { IF }
-	| "elseif" { ELSEIF }
-	| "else" { ELSE }
+	| "IF"|"if" { IF }
+	| "ELSEIF"|"elseif" { ELSEIF }
+	| "ELSE"|"else" { ELSE }
+	| "OTHERWISE" { OTHERWISE }
 	| "main()" { MAIN_HEADER }
 	| '@' { AT }
 	| '+' { PLUS }

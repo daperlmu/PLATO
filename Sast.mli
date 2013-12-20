@@ -14,6 +14,7 @@ type typedExpression =
 	| TypedSet of Ast.platoType * typedExpression list
 	| TypedVector of Ast.platoType * typedExpression list
 	| TypedVectorRange of Ast.platoType * typedExpression * typedExpression * typedExpression
+	| TypedCases of Ast.platoType * (typedExpression * typedExpression) list * typedExpression
 	| TypedFunctionCall of Ast.platoFunctionType * string * typedExpression list
 
 type typedStatement = 
