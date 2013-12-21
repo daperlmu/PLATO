@@ -1,0 +1,7 @@
+main() {
+  PRINT {TRUE IF TRUE; FALSE OTHERWISE};
+  PRINT {TRUE IF never(); FALSE OTHERWISE};
+}
+BOOLEAN never() {
+  RETURN FALSE;
+}
